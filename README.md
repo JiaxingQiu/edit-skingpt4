@@ -60,6 +60,7 @@ cd ./hf_models
 
 ```shell
 conda install -c conda-forge git-lfs
+git lfs install
 git clone https://huggingface.co/meta-llama/Llama-2-13b-chat-hf
 cd Llama-2-13b-chat-hf
 git lfs install
@@ -75,6 +76,7 @@ Then modify line 16 at /skingpt4/configs/models/skingpt4_llama2_13bchat.yaml to 
 # download Vicuna’s **delta** weight
 conda activate skingpt4
 conda install -c conda-forge git-lfs
+git lfs install
 git clone https://huggingface.co/lmsys/vicuna-13b-delta-v0
 cd vicuna-13b-delta-v0
 git lfs install
