@@ -5,8 +5,13 @@
 
 ```
 module load cuda/11.8.0
-conda env create -f skingpt4_env.yml
+conda env create -f skingpt4_env.yml (-n new_name_optional)
+conda activate skingpt4 (or new_name_optional)
+conda install jupyterlab ipykernel notebook -y
+jupyter kernelspec remove skingpt4(or new_name_optional)
+python -m ipykernel install --user --name skingpt4(or new_name_optional) --display-name "skingpt4(or new_name_optional)"
 ```
+in jupyter notebook, select kernal skingpt4(or new_name_optional).
 
 
 ## (Option 2) Installation from scratch based on original repo
