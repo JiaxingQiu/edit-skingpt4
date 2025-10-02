@@ -2,6 +2,8 @@ hf_models/
 Llama-2-13b-chat-hf/
 llama-13b/
 vicuna-13b-delta-v0/
+tokens.txt
+ssh_rivanna
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
