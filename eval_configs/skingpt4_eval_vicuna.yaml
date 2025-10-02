@@ -8,7 +8,7 @@ model:
   low_resource: False
   prompt_path: "prompts/alignment_skin.txt"
   prompt_template: '###Human: {} ###Assistant: '
-  ckpt: '/scratch/jq2uw/edit-skingpt4/weights/weights/skingpt_v4.2.pth'
+  ckpt: '/scratch/jq2uw/edit-skingpt4/weights/skingpt_v4.2.pth'
 
 
 datasets:
