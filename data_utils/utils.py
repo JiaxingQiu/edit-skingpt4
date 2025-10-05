@@ -19,13 +19,13 @@ class MIDASDataset(Dataset):
         row = self.df.iloc[idx]
 
         img_path = self.data_dir / row['id_actual_filename']
-        img = PILImage.open(img_path).convert('RGB')
-        img_tensor = torch.FloatTensor(np.array(img)) / 255.0
-        img_tensor = img_tensor.permute(2, 0, 1)  # HWC to CHW
+        img = PILImage.open(img_path)#.convert('RGB')
+        # img_tensor = torch.FloatTensor(np.array(img)) / 255.0
+        # img_tensor = img_tensor.permute(2, 0, 1)  # HWC to CHW
         
         return {
-            'image': img_tensor,
-            'y': row[['y16', 'y3']].to_dict(),
+            'image': img,
+            'y': row[['y3', 'y16', 'y16_description']].to_dict(),
             'demo': row[[col for col in row.index if col.startswith('demo')]].to_dict(),
             'lesion': row[[col for col in row.index if col.startswith('lesion')]].to_dict(),
             'notes': row[[col for col in row.index if col.startswith('notes')]].to_dict(),
@@ -117,7 +117,7 @@ def process_y(df):
     # ---- y: 16 outcomes ----
     df['y16_description'] = df['midas_path'].map(midas_path_mapping)
     print(f"y16_description: {df['y16_description'].nunique()}")
-    print(f"y16_description: {df['y16_description'].value_counts().to_dict()}")
+    # print(f"y16_description: {df['y16_description'].value_counts().to_dict()}")
     df['y16'] = df['y16_description'].str.split(' - ').str[0]
     print(f"y16: {df['y16'].nunique()}")
     print(f"y16: {df['y16'].value_counts().to_dict()}")
@@ -182,7 +182,7 @@ def process_x_lesion(df):
     # print a summary of the lesion features
     print("=== Lesion Features After Cleaning ===")
     print(f"lesion_distance: {df['lesion_distance'].value_counts().to_dict()}")
-    print(f"lesion_location: {df['lesion_location'].value_counts().to_dict()}")
+    print(f"lesion_location: {df['lesion_location'].nunique()}")
     print(f"lesion_length_mm: {df['lesion_length_mm'].min():.1f} to {df['lesion_length_mm'].max():.1f}")
     print(f"lesion_width_mm: {df['lesion_width_mm'].min():.1f} to {df['lesion_width_mm'].max():.1f}")
     return df
@@ -195,12 +195,12 @@ def process_x_notes(df):
     df['notes_clinical_impression_2'] = df['clinical_impression_2'].str.lower()
     df['notes_clinical_impression_3'] = df['clinical_impression_3'].str.lower()
     df['notes_pathreport'] = df['midas_pathreport'].str.lower()
-    # summarize the notes
-    print("=== Notes After Cleaning ===")
-    print(f"notes_clinical_impression_1: {df['notes_clinical_impression_1'].value_counts().to_dict()}")
-    print(f"notes_clinical_impression_2: {df['notes_clinical_impression_2'].value_counts().to_dict()}")
-    print(f"notes_clinical_impression_3: {df['notes_clinical_impression_3'].value_counts().to_dict()}")
-    print(f"notes_pathreport: {df['notes_pathreport'].value_counts().to_dict()}")
+    # # summarize the notes
+    # print("=== Notes After Cleaning ===")
+    # print(f"notes_clinical_impression_1: {df['notes_clinical_impression_1'].value_counts().to_dict()}")
+    # print(f"notes_clinical_impression_2: {df['notes_clinical_impression_2'].value_counts().to_dict()}")
+    # print(f"notes_clinical_impression_3: {df['notes_clinical_impression_3'].value_counts().to_dict()}")
+    # print(f"notes_pathreport: {df['notes_pathreport'].value_counts().to_dict()}")
     return df
  
 
