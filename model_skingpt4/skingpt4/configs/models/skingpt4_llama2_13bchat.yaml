@@ -12,8 +12,8 @@ model:
   # Q-Former
   num_query_token: 32
 
-  # Vicuna
-  llm_model: "/scratch/jq2uw/edit-skingpt4/hf_models/vicuna"
+  # llama2
+  llm_model: "/scratch/jq2uw/edit-skingpt4/model_skingpt4/hf_models/Llama-2-13b-chat-hf"
 
   # generation configs
   prompt: ""

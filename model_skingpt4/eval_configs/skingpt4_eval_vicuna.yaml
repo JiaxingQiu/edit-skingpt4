@@ -1,13 +1,15 @@
 model:
   arch: skin_gpt4
-  model_type: pretrain_llama2_13bchat
+  model_type: pretrain_vicuna
   freeze_vit: True
   freeze_qformer: True
   max_txt_len: 160
   end_sym: "###"
+  low_resource: False
   prompt_path: "prompts/alignment_skin.txt"
   prompt_template: '###Human: {} ###Assistant: '
-  ckpt: '/scratch/jq2uw/edit-skingpt4/weights/skingpt4_llama2_13bchat_finetune_v4.2_small_class.pth'
+  ckpt: '/scratch/jq2uw/edit-skingpt4/model_skingpt4/weights/skingpt_v4.2.pth'
+
 
 datasets:
   cc_sbu_align:
