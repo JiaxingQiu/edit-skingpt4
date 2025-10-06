@@ -44,5 +44,5 @@ question = "Is the lesion malignant or benign, or other?"
 res_dir = f"./results/ft_skingpt4_{target}"
 os.makedirs(res_dir, exist_ok=True)
 for split_name, ds in [("test", test_dataset), ("train", train_dataset), ("val", val_dataset)]:
-    res = eval_ft_skingpt4(model, ds, temperature=0.01, target=target, question=question)
+    res = eval_ft_skingpt4(chat, ds, temperature=0.01, target=target, question=question)
     torch.save(res, f"{res_dir}/eval_{split_name}.pth")

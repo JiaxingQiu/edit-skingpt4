@@ -28,7 +28,7 @@ def eval_metrics(
     Returns:
         A dictionary with keys: accuracy, precision, recall, f1, and optionally report, confusion.
     """
-
+    labels = labels or sorted(set(y_true + y_pred))
     acc = accuracy_score(y_true, y_pred)
     precision, recall, f1, _ = precision_recall_fscore_support(
         y_true, y_pred, average=average, labels=labels, zero_division=0
@@ -70,7 +70,6 @@ def _normalize(s: str, target: str) -> str:
 def eval_ft_skingpt4(chat, dataset, temperature=0.1, 
                      target="y3", 
                      question="Is the lesion malignant or benign, or other?"):
-    # model, vis_processor, chat = init_chat()
     labels = sorted({_normalize(str(dataset[i]['y'][target]), target) for i in range(len(dataset))})
     rows = []
     y_true, y_pred = [], []
