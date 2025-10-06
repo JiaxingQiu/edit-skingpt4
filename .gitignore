@@ -15,3 +15,5 @@ __pycache__/
 # any file start with test end with .ipynb
 test*.ipynb 
 test*.py
+test*
+finetune_*.pth

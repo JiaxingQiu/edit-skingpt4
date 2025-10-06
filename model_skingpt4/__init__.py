@@ -1,0 +1,90 @@
+import os
+import sys
+import random
+import numpy as np
+import torch
+import torch.backends.cudnn as cudnn
+from PIL import Image
+
+# Ensure 'skingpt4' (inner package) is importable: add its parent (this dir) to sys.path
+_PKG_DIR = os.path.dirname(__file__)
+if _PKG_DIR not in sys.path:
+    sys.path.insert(0, _PKG_DIR)
+
+
+# Absolute imports now resolve to inner package
+from skingpt4.common.config import Config
+from skingpt4.common.dist_utils import get_rank
+from skingpt4.common.registry import registry
+from skingpt4.conversation.conversation import Chat, CONV_VISION
+
+# register modules for side-effects (builders/models/processors/runners/tasks)
+from skingpt4.datasets.builders import *  # noqa
+from skingpt4.models import *  # noqa
+from skingpt4.processors import *  # noqa
+from skingpt4.runners import *  # noqa
+from skingpt4.tasks import *  # noqa
+
+
+def setup_seeds(config):
+    seed = config.run_cfg.seed + get_rank()
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    cudnn.benchmark = False
+    cudnn.deterministic = True
+
+
+def init_chat(
+    gpu_id: int = 0,
+    cfg_path: str = None,
+):
+    # robust default cfg path
+    if cfg_path is None:
+        cfg_path = os.path.join(_PKG_DIR, "eval_configs", "skingpt4_eval_llama2_13bchat.yaml")
+
+    class Args:
+        def __init__(self, cfg_path, gpu_id):
+            self.cfg_path = cfg_path
+            self.gpu_id = gpu_id
+            self.options = None
+
+    print("Initializing Chat")
+    args = Args(cfg_path, gpu_id)
+    cfg = Config(args)
+
+    model_config = cfg.model_cfg
+    model_config.device_8bit = gpu_id  # used when low_resource=True
+    model_cls = registry.get_model_class(model_config.arch)
+    model = model_cls.from_config(model_config).to(f"cuda:{gpu_id}")
+
+    vis_processor_cfg = cfg.datasets_cfg.cc_sbu_align.vis_processor.train
+    vis_processor = registry.get_processor_class(vis_processor_cfg.name).from_config(vis_processor_cfg)
+
+    chat = Chat(model, vis_processor, device=f"cuda:{gpu_id}")
+    print("Initialization Finished")
+    return model, vis_processor, chat
+
+
+def load_model_weights(model, model_path: str):
+    state = torch.load(model_path, map_location="cpu")
+    state = state.get("model", state)
+    model.load_state_dict(state, strict=False)
+    model.eval()
+    return model
+
+
+def chat_with_image(chat, image, question, num_beams=1, temperature=0.01):
+    chat_state = CONV_VISION.copy()
+    img_list = []
+    _ = chat.upload_img(image, chat_state, img_list)
+    chat.ask(question, chat_state)
+    response = chat.answer(
+        conv=chat_state,
+        img_list=img_list,
+        num_beams=num_beams,
+        temperature=temperature,
+        max_new_tokens=300,
+        max_length=2000,
+    )[0]
+    return response
