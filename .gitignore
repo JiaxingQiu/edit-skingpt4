@@ -5,6 +5,9 @@ llama-13b/
 vicuna-13b-delta-v0/
 tokens.txt
 ssh_rivanna
+results/
+log/
+
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
