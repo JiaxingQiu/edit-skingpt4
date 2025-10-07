@@ -1,0 +1,163 @@
+from typing import Tuple, Optional
+import math
+import re
+
+def _clean_text(value) -> Optional[str]:
+    if value is None:
+        return None
+    if isinstance(value, float) and (math.isnan(value) or math.isinf(value)):
+        return None
+    if isinstance(value, str):
+        v = value.strip()
+        if v == "" or v.lower() in {"na", "n/a"}:
+            return None
+        return v
+    return str(value)
+
+def _fmt_age(age) -> Optional[str]:
+    if age is None:
+        return None
+    try:
+        f = float(age)
+        return f"{int(f)}" if f.is_integer() else f"{f:.0f}"
+    except Exception:
+        return _clean_text(age)
+
+def _fmt_size(length, width) -> Optional[str]:
+    l = None if length is None else float(length)
+    w = None if width is None else float(width)
+    if l is not None and w is not None:
+        return f"{l:.1f} × {w:.1f} mm"
+    if l is not None:
+        return f"{l:.1f} mm (length)"
+    if w is not None:
+        return f"{w:.1f} mm (width)"
+    return None
+
+# helpers (place once, outside the function)
+def _as_lower_str(value) -> Optional[str]:
+    t = _clean_text(value)
+    return t.lower() if t else None
+
+def _fmt_melanoma_history(value) -> Optional[str]:
+    v = _as_lower_str(value)
+    if v in {"yes", "y", "true", "1"}:
+        return "The patient has a history of melanoma"
+    if v in {"no", "n", "false", "0"}:
+        return "The patient has no history of melanoma"
+    return None  # omit unknown/blank
+
+def _fmt_ethnicity(value) -> Optional[str]:
+    v = _as_lower_str(value)
+    if v in {"yes", "y", "true", "1", "hispanic", "latino", "hispanic/latino"}:
+        return "Hispanic/Latino"
+    return None  # suppress 'no' and unknown
+
+def _humanize_impression(text: Optional[str]) -> Optional[str]:
+    t = _clean_text(text)
+    if not t:
+        return None
+    # Drop leading numeric codes like "7-" and replace hyphens with spaces where appropriate
+    t = re.sub(r"^\d+\s*-\s*", "", t)
+    t = t.replace("_", " ")
+    # Keep known abbreviations intact; expand simple ones if desired
+    t = t.replace("bcc", "BCC").replace("scc", "SCC")
+    return t
+
+def row_to_natural_text(row) -> Tuple[str, str, str, str]:
+    """
+    Outcome: This patient’s diagnosis is {y16} ({y3}). {y16_description} {path_report_sentence}
+    Demographics: The patient is {age_sentence}{gender_sentence}{fitz_sentence}{melanoma_history_sentence}{race_eth_sentence}.
+    Lesion: The lesion is on the {lesion_location}, imaged at {lesion_distance}. It measures {len_width_mm_sentence}. Clinical impressions include {impressions_sentence}.
+    """
+    # Outcome
+    y16 = _clean_text(row.get("y16"))
+    y3 = _clean_text(row.get("y3"))
+    y3 = y3.replace("other", "unknown")
+    y16_desc = _clean_text(row.get("y16_description"))
+    path = _clean_text(row.get("notes_pathreport"))
+
+    outcome_sentences = []
+    if y3:
+        outcome_sentences.append(f"The lesion type is {y3}.")
+    if y16_desc:
+        outcome_sentences.append(f"The patient is diagnosed with {_as_lower_str(y16_desc)}")
+    if path:
+        s = path.rstrip(".")
+        outcome_sentences.append(f"On pathology, {s}.")
+    outcome_text = " ".join(outcome_sentences).strip()
+
+    # DEMOGRAPHICS
+    age = _fmt_age(row.get("demo_age"))
+    gender = _clean_text(row.get("demo_gender"))
+    fitz = _clean_text(row.get("demo_fitzpatrick_skintype"))
+    race = _clean_text(row.get("demo_race"))
+    eth_phrase = _fmt_ethnicity(row.get("demo_ethnicity"))  # e.g., "Hispanic/Latino" or None
+    hist_phrase = _fmt_melanoma_history(row.get("demo_melanoma_history"))  # e.g., "with a history of melanoma"
+
+    parts = []
+    intro_bits = []
+
+    if age:
+        intro_bits.append(f"{age}-year-old")
+    if eth_phrase:
+        intro_bits.append(eth_phrase)
+    if race:
+        intro_bits.append(race)
+    if gender:
+        intro_bits.append(gender)
+
+    if intro_bits:
+        parts.append("The patient is " + " ".join(intro_bits))
+    if fitz:
+        parts.append(f"with Fitzpatrick type {fitz}.")
+    if hist_phrase:
+        parts.append(hist_phrase)
+
+    demographics_text = ""
+    if parts:
+        sentence = " ".join(parts).strip()
+        if not sentence.endswith("."):
+            sentence += "."
+        demographics_text = sentence
+
+    # Lesion
+    loc = _clean_text(row.get("lesion_location"))
+    dist = _clean_text(row.get("lesion_distance"))
+    size_txt = _fmt_size(row.get("lesion_length_mm"), row.get("lesion_width_mm"))
+
+    imps = [
+        _humanize_impression(row.get("notes_clinical_impression_1")),
+        _humanize_impression(row.get("notes_clinical_impression_2")),
+        _humanize_impression(row.get("notes_clinical_impression_3")),
+    ]
+    imps = [i for i in imps if i]
+    imps_txt = None
+    if imps:
+        # Oxford comma style for 3+ items
+        if len(imps) == 1:
+            imps_txt = imps[0]
+        elif len(imps) == 2:
+            imps_txt = " and ".join(imps)
+        else:
+            imps_txt = ", ".join(imps[:-1]) + f", and {imps[-1]}"
+
+    lesion_bits = []
+    if loc and dist:
+        lesion_bits.append(f"The lesion is on the {loc}, imaged at {dist}.")
+    elif loc:
+        lesion_bits.append(f"The lesion is on the {loc}.")
+    elif dist:
+        lesion_bits.append(f"The lesion was imaged at {dist}.")
+    if size_txt:
+        lesion_bits.append(f"It measures {size_txt}.")
+    if imps_txt:
+        lesion_bits.append(f"Clinical impressions include {imps_txt}.")
+    lesion_text = " ".join(lesion_bits).strip()
+
+    # Full paragraph
+    full = " ".join([t for t in [outcome_text, demographics_text, lesion_text] if t]).strip()
+    return full, outcome_text, demographics_text, lesion_text
+
+# Usage:
+# full, outcome, demo, lesion = row_to_natural_text(df.iloc[0])

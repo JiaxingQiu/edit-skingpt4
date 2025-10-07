@@ -6,6 +6,7 @@ import torch
 from torch.utils.data import Dataset
 from sklearn.model_selection import train_test_split
 import json  # Add this import at the top
+from .tabular2text import *
 
 class MIDASDataset(Dataset):
     def __init__(self, df, data_dir):
@@ -22,14 +23,16 @@ class MIDASDataset(Dataset):
         img = PILImage.open(img_path)#.convert('RGB')
         # img_tensor = torch.FloatTensor(np.array(img)) / 255.0
         # img_tensor = img_tensor.permute(2, 0, 1)  # HWC to CHW
-        
+        # full, outcome_text, demographics_text, lesion_text = row_to_natural_text(row)
+
         return {
             'image': img,
             'y': row[['y3', 'y16', 'y16_description']].to_dict(),
             'demo': row[[col for col in row.index if col.startswith('demo')]].to_dict(),
             'lesion': row[[col for col in row.index if col.startswith('lesion')]].to_dict(),
             'notes': row[[col for col in row.index if col.startswith('notes')]].to_dict(),
-            'id': row[['id_patient', 'id_filename']].to_dict()
+            'id': row[['id_patient', 'id_filename']].to_dict(),
+            'texts' : row[[col for col in row.index if col.startswith('text')]].to_dict(),
         }
 
 
@@ -63,9 +66,14 @@ def process_tabular(data_dir):
     df = process_x_lesion(df)
     df = process_x_notes(df)
     df = image_tabular_mapping(df, data_dir)
+    text_cols = df.apply(lambda r: pd.Series(
+        row_to_natural_text(r),
+        index=["text_full","text_outcome","text_demo","text_lesion"]
+    ), axis=1)
+    df = pd.concat([df, text_cols], axis=1)
 
     # Keep columns that start with id, y, demo, lesion, notes
-    keep_columns = [col for col in df.columns if any(col.startswith(prefix) for prefix in ['id', 'y', 'demo', 'lesion', 'notes'])]
+    keep_columns = [col for col in df.columns if any(col.startswith(prefix) for prefix in ['id', 'y', 'demo', 'lesion', 'notes', 'text'])]
     df = df[keep_columns]
     print(f"Final dataset shape: {df.shape}")
     print(f"Columns kept: {list(df.columns)}")

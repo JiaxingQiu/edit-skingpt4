@@ -86,6 +86,11 @@ def run_epoch(loader, model, optimizer=None, scaler=None, train=True):
 
     return total_loss / max(n, 1)
 
+
+# LLaMA weights: frozen (not updated). The model sets all llm_model params to requires_grad=False.
+# Vision encoder + layer norm: frozen by default (freeze_vit=True).
+# Q-Former + query tokens: frozen by default (freeze_qformer=True).
+# Updated weights: primarily the projection layer llama_proj (mapping Q-Former outputs to LLaMA hidden size).
 def finetune(model, train_loader, val_loader, n_epochs=1, retrain=False,
              lr=1e-4, weight_decay=0.0, ckpt_path="./model_skingpt4/weights/finetune_llama.pth"):
     if retrain or not os.path.exists(ckpt_path):
