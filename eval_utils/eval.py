@@ -66,6 +66,15 @@ def _normalize(s: str, target: str) -> str:
             return "other"
         else:
             return "unknown"
+    if target.startswith('text'):
+        if "malignant" in s:
+            return "malignant"
+        elif "benign" in s:
+            return "benign"
+        elif "other" in s:
+            return "other"
+        else:
+            return "unknown"
 
 def eval_ft_skingpt4(chat, dataset, temperature=0.1, 
                      target="y3", 

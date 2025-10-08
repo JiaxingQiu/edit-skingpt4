@@ -27,12 +27,11 @@ class MIDASDataset(Dataset):
 
         return {
             'image': img,
-            'y': row[['y3', 'y16', 'y16_description']].to_dict(),
+            'y': row[['y3', 'y16', 'y16_description'] + [col for col in row.index if col.startswith('text')]].to_dict(),
             'demo': row[[col for col in row.index if col.startswith('demo')]].to_dict(),
             'lesion': row[[col for col in row.index if col.startswith('lesion')]].to_dict(),
             'notes': row[[col for col in row.index if col.startswith('notes')]].to_dict(),
-            'id': row[['id_patient', 'id_filename']].to_dict(),
-            'texts' : row[[col for col in row.index if col.startswith('text')]].to_dict(),
+            'id': row[['id_patient', 'id_filename']].to_dict()
         }
 
 

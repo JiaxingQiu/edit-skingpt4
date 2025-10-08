@@ -13,6 +13,7 @@ from skingpt4.common.registry import registry
 from skingpt4.models.base_model import BaseModel
 from skingpt4.models.blip2 import Blip2Base
 from skingpt4.models.skin_gpt4 import skingpt4
+from skingpt4.models.skin_gpt_io import skingpt_io
 from skingpt4.processors.base_processor import BaseProcessor
 
 
@@ -21,6 +22,7 @@ __all__ = [
     "BaseModel",
     "Blip2Base",
     "skingpt4",
+    "skingpt_io",
 ]
 
 
