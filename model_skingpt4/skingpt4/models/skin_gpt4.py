@@ -10,6 +10,12 @@ from skingpt4.models.blip2 import Blip2Base, disabled_train
 from skingpt4.models.modeling_llama import LlamaForCausalLM
 from transformers import LlamaTokenizer
 
+# for training / finetuning
+import os
+import torch
+from torch.optim import AdamW
+from torch.cuda.amp import GradScaler, autocast
+
 
 @registry.register_model("skin_gpt4")
 class skingpt4(Blip2Base):
@@ -268,3 +274,67 @@ class skingpt4(Blip2Base):
             msg = model.load_state_dict(ckpt['model'], strict=False)
 
         return model
+    
+    def run_epoch(self, loader, optimizer=None, scaler=None, train=True):
+        # loader should be a MIDASFTSkGPT4Dataset instance
+        device = next(self.parameters()).device
+        self.train(mode=train)
+        total_loss, n = 0.0, 0
+
+        for batch in loader:
+            images = batch["image"].to(device, non_blocking=True)
+            texts  = batch["text_input"]
+            samples = {"image": images, "text_input": texts}
+
+            if train:
+                optimizer.zero_grad(set_to_none=True)
+
+            with autocast(enabled=True):
+                out = self(samples)
+                loss = out["loss"]
+
+            if train:
+                scaler.scale(loss).backward()
+                scaler.step(optimizer)
+                scaler.update()
+
+            total_loss += loss.item() * images.size(0)
+            n += images.size(0)
+
+        return total_loss / max(n, 1)
+
+
+    # LLaMA weights: frozen (not updated). The model sets all llm_model params to requires_grad=False.
+    # Vision encoder + layer norm: frozen by default (freeze_vit=True).
+    # Q-Former + query tokens: frozen by default (freeze_qformer=True).
+    # Updated weights: primarily the projection layer llama_proj (mapping Q-Former outputs to LLaMA hidden size).
+    def finetune(self, train_loader, val_loader, n_epochs=1, retrain=False,
+                lr=1e-4, weight_decay=0.0, ckpt_path="./model_skingpt4/weights/finetune_llama.pth"):
+        if retrain or not os.path.exists(ckpt_path):
+            optimizer = AdamW((p for p in self.parameters() if p.requires_grad), lr=lr, weight_decay=weight_decay)
+            scaler = GradScaler(enabled=True)
+            best_val = float("inf")
+
+            try:
+                for epoch in range(n_epochs):
+                    train_loss = self.run_epoch(train_loader, optimizer, scaler, train=True)
+                    with torch.no_grad():
+                        val_loss = self.run_epoch(val_loader, train=False)
+                    print(f"epoch {epoch+1}/{n_epochs}  train_loss={train_loss:.4f}  val_loss={val_loss:.4f}")
+
+                    if val_loss < best_val:
+                        best_val = val_loss
+                        torch.save({"model": self.state_dict()}, ckpt_path)
+            except KeyboardInterrupt:
+                torch.save({"model": self.state_dict()}, ckpt_path)
+                print(f"\nKeyboardInterrupt: saved checkpoint to {ckpt_path}")
+            finally:
+                self.eval()
+        else:
+            state = torch.load(ckpt_path, map_location="cpu")
+            state = state.get("model", state)
+            _ = self.load_state_dict(state, strict=False)
+            self.eval()
+    # example usage
+    # model = finetune(model, train_loader, val_loader, n_epochs=1, retrain=False,
+    #         lr=1e-4, weight_decay=0.0, ckpt_path="./model_skingpt4/weights/finetune_llama.pth")
