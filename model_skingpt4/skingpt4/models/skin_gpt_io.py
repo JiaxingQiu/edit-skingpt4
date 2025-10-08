@@ -351,6 +351,9 @@ class skingpt_io(Blip2Base):
     def finetune(self, train_loader, val_loader, n_epochs=1, retrain=False,
                 lr=1e-4, weight_decay=0.0, ckpt_path="./model_skingpt4/weights/finetune_llama.pth"):
         if retrain or not os.path.exists(ckpt_path):
+            for p in self.parameters():
+                if p.requires_grad:
+                    p.data = p.data.float()
             optimizer = AdamW((p for p in self.parameters() if p.requires_grad), lr=lr, weight_decay=weight_decay)
             scaler = GradScaler(enabled=True)
             best_val = float("inf")

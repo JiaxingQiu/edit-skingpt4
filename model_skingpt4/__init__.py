@@ -37,11 +37,12 @@ def setup_seeds(config):
 
 def init_chat(
     gpu_id: int = 0,
-    cfg_path: str = None,
+    cfg_path_str: str = None,
 ):
     # robust default cfg path
-    if cfg_path is None:
-        cfg_path = os.path.join(_PKG_DIR, "eval_configs", "skingpt4_eval_llama2_13bchat.yaml")
+    if cfg_path_str is None:
+        cfg_path_str = "skingpt4_eval_llama2_13bchat"
+    cfg_path = os.path.join(_PKG_DIR, "eval_configs", f"{cfg_path_str}.yaml")
 
     class Args:
         def __init__(self, cfg_path, gpu_id):
