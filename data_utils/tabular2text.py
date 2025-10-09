@@ -74,18 +74,14 @@ def row_to_natural_text(row) -> Tuple[str, str, str, str]:
     y16 = _clean_text(row.get("y16"))
     y3 = _clean_text(row.get("y3"))
     y3 = y3.replace("other", "unknown")
-    y16_desc = _clean_text(row.get("y16_description"))
+    # y16_desc = _clean_text(row.get("y16_description"))
     path = _clean_text(row.get("notes_pathreport"))
 
-    outcome_sentences = []
-    if y3:
-        outcome_sentences.append(f"The lesion type is {y3}.")
-    if y16_desc:
-        outcome_sentences.append(f"The patient is diagnosed with {_as_lower_str(y16_desc)}")
-    if path:
-        s = path.rstrip(".")
-        outcome_sentences.append(f"On pathology, {s}.")
-    outcome_text = " ".join(outcome_sentences).strip()
+    text_y3  = f"The lesion type is {y3}." if y3 else ""
+    text_y16 = f"The patient is diagnosed with {_as_lower_str(y16)}" if y16 else ""
+    text_path = f"On pathology, {path.rstrip('.')}." if path else ""
+    parts = [text_y3, text_y16, text_path]
+    text_outcome = " ".join([p for p in parts if p]).strip()
 
     # DEMOGRAPHICS
     age = _fmt_age(row.get("demo_age"))
@@ -156,8 +152,8 @@ def row_to_natural_text(row) -> Tuple[str, str, str, str]:
     lesion_text = " ".join(lesion_bits).strip()
 
     # Full paragraph
-    full = " ".join([t for t in [outcome_text, demographics_text, lesion_text] if t]).strip()
-    return full, outcome_text, demographics_text, lesion_text
+    full = " ".join([t for t in [text_outcome, demographics_text, lesion_text] if t]).strip()
+    return full, text_outcome, text_y3, text_y16, demographics_text, lesion_text
 
 # Usage:
-# full, outcome, demo, lesion = row_to_natural_text(df.iloc[0])
+# full, text_outcome, text_y3, text_y16, demographics_text, lesion_text = row_to_natural_text(df.iloc[0])

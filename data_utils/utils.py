@@ -21,10 +21,6 @@ class MIDASDataset(Dataset):
 
         img_path = self.data_dir / row['id_actual_filename']
         img = PILImage.open(img_path)#.convert('RGB')
-        # img_tensor = torch.FloatTensor(np.array(img)) / 255.0
-        # img_tensor = img_tensor.permute(2, 0, 1)  # HWC to CHW
-        # full, outcome_text, demographics_text, lesion_text = row_to_natural_text(row)
-
         return {
             'image': img,
             'y': row[['y3', 'y16', 'y16_description'] + [col for col in row.index if col.startswith('text')]].to_dict(),
@@ -67,7 +63,7 @@ def process_tabular(data_dir):
     df = image_tabular_mapping(df, data_dir)
     text_cols = df.apply(lambda r: pd.Series(
         row_to_natural_text(r),
-        index=["text_full","text_outcome","text_demo","text_lesion"]
+        index=["text_full","text_outcome","text_y3","text_y16","text_demo","text_lesion"]
     ), axis=1)
     df = pd.concat([df, text_cols], axis=1)
 

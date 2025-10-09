@@ -3,14 +3,14 @@ i = 16
 image = test_dataset[i]['image']
 temperature = 0.01
 ending_question = "Is the lesion malignant or benign, or unknown?"
-print(f"ground truth: {test_dataset[i]['y'][target]}")
+print(f"ground truth: {test_dataset[i]['y'][eval_target]}")
 print("-" * 50)
 print("Pretrained model")
 model = load_model_weights(model, pt_ckpt_path)
 resp = chat_with_image(chat, image, ending_question, temperature=temperature)
 print(resp)
 print("-" * 50)
-print(f"Finetuned model ({model_type}_{target})")
+print(f"Finetuned model ({model_name})")
 model = load_model_weights(model, ft_ckpt_path)
 if model_type == "gpt_io":
     prompt = ""
@@ -25,7 +25,6 @@ print(resp)
 
 # --- eval ---
 ending_question = "Is the lesion malignant or benign, or other?"
-res_dir = f"./finetune/results/ft_skin{model_type}_{eval_target}"
 os.makedirs(res_dir, exist_ok=True)
 for split_name, ds in [("test", test_dataset), ("train", train_dataset), ("val", val_dataset)]:
     if model_type == "gpt_io":

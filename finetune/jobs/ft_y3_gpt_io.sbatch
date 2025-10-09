@@ -1,10 +1,10 @@
 #!/bin/bash
-#SBATCH --job-name=ft_y3_skingpt4
+#SBATCH --job-name=ft_y3_skingpt_io
 #SBATCH -p gpu
 #SBATCH --gres=gpu:1  
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=160G
-#SBATCH -t 6:00:00
+#SBATCH -t 3:00:00
 #SBATCH -A cama
 #SBATCH --export=NONE
 #SBATCH --output=log/slurm-%x.out
@@ -23,4 +23,4 @@ nvidia-smi || true
 export OMP_NUM_THREADS=${SLURM_CPUS_PER_TASK:-1}
 
 cd /scratch/jq2uw/edit-skingpt4
-python3 main_ft.py --model_type gpt_io --target y3 --eval_target y3
+python3 main_ft.py --model_type gpt_io --retrain --eval_target y3
