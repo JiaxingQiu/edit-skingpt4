@@ -58,6 +58,7 @@ def init_chat(
     model_config.device_8bit = gpu_id  # used when low_resource=True
     model_cls = registry.get_model_class(model_config.arch)
     model = model_cls.from_config(model_config).to(f"cuda:{gpu_id}")
+    model.ckpt = cfg.config.model.ckpt # expose the ckpt path
 
     vis_processor_cfg = cfg.datasets_cfg.cc_sbu_align.vis_processor.train
     vis_processor = registry.get_processor_class(vis_processor_cfg.name).from_config(vis_processor_cfg)
@@ -86,6 +87,6 @@ def chat_with_image(chat, image, question, num_beams=1, temperature=0.01):
         num_beams=num_beams,
         temperature=temperature,
         max_new_tokens=300,
-        max_length=2000,
+        max_length=2000
     )[0]
     return response

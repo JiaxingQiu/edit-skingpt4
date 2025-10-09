@@ -52,7 +52,7 @@ class MIDASFTSkGPT4Dataset(Dataset):
 
 # IO dataset: returns {"image", "prompt_input", "answer_output"}
 class MIDASFTSkGPTIODataset(Dataset):
-    def __init__(self, base_dataset, vis_processor, prompt_key="text_demo", answer_keys=("text_outcome", "text_lesion")):
+    def __init__(self, base_dataset, vis_processor, prompt_keys=["text_demo", "text_lesion"], answer_keys=["text_outcome"]):
         """
         Args:
             base_dataset: underlying dataset yielding dicts with PIL 'image' and a 'y' dict of text fields
@@ -62,9 +62,9 @@ class MIDASFTSkGPTIODataset(Dataset):
         """
         self.base = base_dataset
         self.vis = vis_processor
-        self.prompt_key = prompt_key
-        self.answer_keys = answer_keys
-
+        self.prompt_keys = list(prompt_keys)
+        self.answer_keys = list(answer_keys)
+    
     def __len__(self):
         return len(self.base)
 
@@ -74,13 +74,8 @@ class MIDASFTSkGPTIODataset(Dataset):
         img_tensor = self.vis(img)
 
         y = item.get("y", {}) or {}
-        prompt = (y.get(self.prompt_key, "") or "").strip()
-        parts = []
-        for k in self.answer_keys:
-            v = (y.get(k, "") or "").strip()
-            if v:
-                parts.append(v)
-        answer = " ".join(parts)
+        prompt = " ".join([(y.get(k, "") or "").strip() for k in self.prompt_keys if (y.get(k, "") or "").strip()])
+        answer = " ".join([(y.get(k, "") or "").strip() for k in self.answer_keys if (y.get(k, "") or "").strip()])
 
         return {"image": img_tensor, "prompt_input": prompt, "answer_output": answer}
 

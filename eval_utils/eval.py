@@ -78,15 +78,24 @@ def _normalize(s: str, target: str) -> str:
 
 def eval_ft_skingpt4(chat, dataset, temperature=0.1, 
                      target="y3", 
-                     question="Is the lesion malignant or benign, or other?"):
+                     question="Is the lesion malignant or benign, or other?",
+                     prompt_keys = None):
     labels = sorted({_normalize(str(dataset[i]['y'][target]), target) for i in range(len(dataset))})
     rows = []
     y_true, y_pred = [], []
+    base_question = question
     for i in tqdm(range(len(dataset))):
         sample = dataset[i]
         img = sample['image']
         gt = _normalize(sample['y'][target], target)
-        pred = _normalize(chat_with_image(chat, img, question, temperature=temperature), target)
+        local_q = base_question
+        if prompt_keys is not None:
+            pre = " ".join(
+                (str(sample['y'].get(k, "")).strip() for k in prompt_keys if sample['y'].get(k))
+            )
+            if pre:
+                local_q = f"{pre} {base_question}"
+        pred = _normalize(chat_with_image(chat, img, local_q, temperature=temperature), target)
         y_true.append(gt)
         y_pred.append(pred)
         rows.append({

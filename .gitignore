@@ -20,3 +20,4 @@ test*.ipynb
 test*.py
 test*
 finetune_*.pth
+ft_*.pth

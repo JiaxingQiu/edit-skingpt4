@@ -7,8 +7,8 @@
 #SBATCH -t 6:00:00
 #SBATCH -A hartvigsen_lab
 #SBATCH --export=NONE
-#SBATCH --output=log/slurm-%x-%j.out
-#SBATCH --error=log/slurm-%x-%j.err
+#SBATCH --output=log/slurm-%x.out
+#SBATCH --error=log/slurm-%x.err
 
 set -euo pipefail
 
@@ -23,4 +23,4 @@ nvidia-smi || true
 export OMP_NUM_THREADS=${SLURM_CPUS_PER_TASK:-1}
 
 cd /scratch/jq2uw/edit-skingpt4
-python3 main.py
+python3 finetune/main.py --model_type gpt4 --target y3 --eval_target y3
