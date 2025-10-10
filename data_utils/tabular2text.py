@@ -73,11 +73,11 @@ def row_to_natural_text(row) -> Tuple[str, str, str, str]:
     # Outcome
     y16 = _clean_text(row.get("y16"))
     y3 = _clean_text(row.get("y3"))
-    y3 = y3.replace("other", "unknown")
+    # y3 = y3.replace("other", "unknown")
     # y16_desc = _clean_text(row.get("y16_description"))
     path = _clean_text(row.get("notes_pathreport"))
 
-    text_y3  = f"The lesion type is {y3}." if y3 else ""
+    text_y3  = f"The lesion is {y3}." if y3 else ""
     text_y16 = f"The patient is diagnosed with {_as_lower_str(y16)}" if y16 else ""
     text_path = f"On pathology, {path.rstrip('.')}." if path else ""
     parts = [text_y3, text_y16, text_path]

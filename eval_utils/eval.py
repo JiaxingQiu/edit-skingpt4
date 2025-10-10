@@ -71,7 +71,7 @@ def _normalize(s: str, target: str) -> str:
             return "malignant"
         elif "benign" in s:
             return "benign"
-        elif "other" in s:
+        elif ("other" in s) or ("unknown" in s):
             return "other"
         else:
             return "unknown"
