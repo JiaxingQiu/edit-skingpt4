@@ -9,6 +9,7 @@ def run(args):
     print(f"answer_keys   : {args.answer_keys}")
     print(f"unfreeze_vit  : {args.unfreeze_vit}")
     print(f"unfreeze_qformer: {args.unfreeze_qformer}")
+    print(f"n_epochs      : {args.n_epochs}")
     
 
 if __name__ == "__main__":
@@ -20,6 +21,7 @@ if __name__ == "__main__":
     parser.add_argument("--answer_keys", nargs="+", default=["text_y3"], help="For gpt_io: e.g., text_outcome text_lesion")
     parser.add_argument("--unfreeze_vit", action="store_true", help="Unfreeze the vision encoder")
     parser.add_argument("--unfreeze_qformer", action="store_true", help="Unfreeze the Q-Former")
+    parser.add_argument("--n_epochs", type=int, default=10, help="Number of epochs")
     args = parser.parse_args()
     run(args)
 

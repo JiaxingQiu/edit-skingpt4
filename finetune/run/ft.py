@@ -9,5 +9,5 @@ else:
 
 train_loader = train_ds_ft.get_loader(batch_size=2, shuffle=True, num_workers=2)
 val_loader   = val_ds_ft.get_loader(batch_size=2, shuffle=False, num_workers=2)
-model.finetune(train_loader, val_loader, n_epochs=10, retrain=retrain, lr=1e-4, weight_decay=0.5, ckpt_path=ft_ckpt_path)
+model.finetune(train_loader, val_loader, n_epochs=n_epochs, retrain=retrain, lr=1e-4, weight_decay=0.5, ckpt_path=ft_ckpt_path)
 
