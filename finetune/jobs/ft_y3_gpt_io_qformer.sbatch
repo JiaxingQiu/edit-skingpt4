@@ -1,10 +1,10 @@
 #!/bin/bash
 #SBATCH --job-name=ft_y3_skingpt_io_qformer
 #SBATCH -p gpu
-#SBATCH --gres=gpu:1  
+#SBATCH --gres=gpu:a100:1
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=200G
-#SBATCH -t 10:00:00
+#SBATCH -t 12:00:00
 #SBATCH -A cama
 #SBATCH --export=NONE
 #SBATCH --output=log/slurm-%x.out

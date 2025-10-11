@@ -10,6 +10,7 @@ def run(args):
     print(f"unfreeze_vit  : {args.unfreeze_vit}")
     print(f"unfreeze_qformer: {args.unfreeze_qformer}")
     print(f"n_epochs      : {args.n_epochs}")
+    print(f"init_lr       : {args.init_lr}")
     
 
 if __name__ == "__main__":
@@ -22,6 +23,7 @@ if __name__ == "__main__":
     parser.add_argument("--unfreeze_vit", action="store_true", help="Unfreeze the vision encoder")
     parser.add_argument("--unfreeze_qformer", action="store_true", help="Unfreeze the Q-Former")
     parser.add_argument("--n_epochs", type=int, default=10, help="Number of epochs")
+    parser.add_argument("--init_lr", type=float, default=1e-4, help="Initial learning rate")
     args = parser.parse_args()
     run(args)
 

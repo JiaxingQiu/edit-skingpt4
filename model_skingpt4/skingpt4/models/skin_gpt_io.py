@@ -15,6 +15,7 @@ import os
 import torch    
 from torch.optim import AdamW
 from torch.cuda.amp import GradScaler, autocast
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 @registry.register_model("skin_gpt_io")
 class skingpt_io(Blip2Base):
@@ -355,6 +356,7 @@ class skingpt_io(Blip2Base):
                 if p.requires_grad:
                     p.data = p.data.float()
             optimizer = AdamW((p for p in self.parameters() if p.requires_grad), lr=lr, weight_decay=weight_decay)
+            scheduler = ReduceLROnPlateau(optimizer, mode="min", factor=0.5, patience=5, min_lr=1e-8, verbose=True)
             scaler = GradScaler(enabled=True)
             best_val = float("inf")
 
@@ -368,6 +370,7 @@ class skingpt_io(Blip2Base):
                     if val_loss < best_val:
                         best_val = val_loss
                         torch.save({"model": self.state_dict()}, ckpt_path)
+                    scheduler.step(val_loss) # step LR scheduler based on validation loss
             except KeyboardInterrupt:
                 torch.save({"model": self.state_dict()}, ckpt_path)
                 print(f"\nKeyboardInterrupt: saved checkpoint to {ckpt_path}")
