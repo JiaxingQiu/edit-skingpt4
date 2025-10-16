@@ -44,6 +44,8 @@ class skingpt_io(Blip2Base):
         prompt_template="",
         max_txt_len=32,
         end_sym='\n',
+        use_conv_training=True,
+        conv_question="Is the lesion malignant or benign, or other?",
         low_resource=False,  # use 8 bit and put vit in cpu
         device_8bit=0,  # the device of 8bit model should be set when loading and cannot be changed anymore.
     ):
@@ -51,6 +53,9 @@ class skingpt_io(Blip2Base):
 
         self.tokenizer = self.init_tokenizer()
         self.low_resource = low_resource
+        
+        self.use_conv_training = bool(use_conv_training)
+        self.conv_question = str(conv_question).strip()
 
         print('Loading VIT')
         self.visual_encoder, self.ln_vision = self.init_vision_encoder(
@@ -174,7 +179,43 @@ class skingpt_io(Blip2Base):
     def forward(self, samples):
         image = samples["image"]
         img_embeds, atts_img = self.encode_img(image)
-        if hasattr(samples, 'question_split'):  # VQA dataset
+        if self.use_conv_training:
+            """
+            "###Human: <Img><ImageHere></Img> {local_q} ###Assistant:"
+            """
+            if ("prompt_input" in samples) and ("answer_output" in samples):
+                batch_size = image.size(0)
+
+                # Common Human prefix up to the image placeholder
+                p_before = "###Human: <Img><ImageHere></Img> "
+                p_before_ids = self.llm_tokenizer(
+                    p_before, return_tensors="pt", add_special_tokens=False
+                ).to(image.device).input_ids
+                p_before_embeds = self.llm_model.model.embed_tokens(p_before_ids).expand(batch_size, -1, -1)
+
+                # Per-sample suffix: "<prompt_input> {question} ###Assistant: "
+                after_texts = [
+                    (f"{(samples['prompt_input'][i] or '').strip()} {self.conv_question} ###Assistant: ").strip()
+                    for i in range(batch_size)
+                ]
+                p_after_tokens = self.llm_tokenizer(
+                    after_texts,
+                    return_tensors="pt",
+                    padding="longest",
+                    truncation=True,
+                    max_length=self.max_txt_len,
+                    add_special_tokens=False,
+                ).to(image.device)
+                p_after_embeds = self.llm_model.model.embed_tokens(p_after_tokens.input_ids)
+
+                # Wrap [Human prefix] + [Image embeds] + [per-sample suffix]
+                img_embeds = torch.cat([p_before_embeds, img_embeds, p_after_embeds], dim=1)
+                atts_img = atts_img[:, :1].expand(-1, img_embeds.shape[1])
+            else:
+                # Fallback: fixed question only
+                conv_prompt = f"###Human: <Img><ImageHere></Img> {self.conv_question} ###Assistant: "
+                img_embeds, atts_img = self.prompt_wrap(img_embeds, atts_img, conv_prompt)
+        elif hasattr(samples, 'question_split'):  # VQA dataset
             print('VQA Batch')
             vqa_prompt = '###Human: <Img><ImageHere></Img> '
             img_embeds, atts_img = self.prompt_wrap(img_embeds, atts_img, vqa_prompt)
@@ -186,41 +227,62 @@ class skingpt_io(Blip2Base):
 
         # Support prompt+answer IO training with masked loss; fallback to plain text_input
         if ("prompt_input" in samples) and ("answer_output" in samples):
-            prompts = list(samples["prompt_input"])
-            answers = [a + self.end_sym for a in samples["answer_output"]]
+            if self.use_conv_training:
+                answers = [a + self.end_sym for a in samples["answer_output"]]
+                answer_tokens = self.llm_tokenizer(
+                    answers,
+                    return_tensors="pt",
+                    padding="longest",
+                    truncation=True,
+                    max_length=self.max_txt_len,
+                    add_special_tokens=False,
+                ).to(image.device)
 
-            prompt_tokens = self.llm_tokenizer(
-                prompts,
-                return_tensors="pt",
-                padding="longest",
-                truncation=True,
-                max_length=self.max_txt_len,
-                add_special_tokens=False,
-            ).to(image.device)
+                # Labels: only the answer, mask pads; prompt is already in conv wrapper (masked by empty_targets)
+                targets_tail = answer_tokens.input_ids.masked_fill(
+                    answer_tokens.input_ids == self.llm_tokenizer.pad_token_id, -100
+                )
 
-            answer_tokens = self.llm_tokenizer(
-                answers,
-                return_tensors="pt",
-                padding="longest",
-                truncation=True,
-                max_length=self.max_txt_len,
-                add_special_tokens=False,
-            ).to(image.device)
+                to_regress_embeds = self.llm_model.model.embed_tokens(answer_tokens.input_ids)
+                to_regress_attn = answer_tokens.attention_mask
+                id_dtype = answer_tokens.input_ids.dtype
+                id_device = answer_tokens.input_ids.device
+            else:
+                prompts = list(samples["prompt_input"])
+                answers = [a + self.end_sym for a in samples["answer_output"]]
 
-            # Labels: mask prompt, learn answer
-            labels_prompt = torch.full_like(prompt_tokens.input_ids, -100)
-            labels_answer = answer_tokens.input_ids.masked_fill(
-                answer_tokens.input_ids == self.llm_tokenizer.pad_token_id, -100
-            )
-            targets_tail = torch.cat([labels_prompt, labels_answer], dim=1)
+                prompt_tokens = self.llm_tokenizer(
+                    prompts,
+                    return_tensors="pt",
+                    padding="longest",
+                    truncation=True,
+                    max_length=self.max_txt_len,
+                    add_special_tokens=False,
+                ).to(image.device)
 
-            # Text embeds and attention
-            prompt_embeds = self.llm_model.model.embed_tokens(prompt_tokens.input_ids)
-            answer_embeds = self.llm_model.model.embed_tokens(answer_tokens.input_ids)
-            to_regress_embeds = torch.cat([prompt_embeds, answer_embeds], dim=1)
-            to_regress_attn = torch.cat([prompt_tokens.attention_mask, answer_tokens.attention_mask], dim=1)
-            id_dtype = prompt_tokens.input_ids.dtype
-            id_device = prompt_tokens.input_ids.device
+                answer_tokens = self.llm_tokenizer(
+                    answers,
+                    return_tensors="pt",
+                    padding="longest",
+                    truncation=True,
+                    max_length=self.max_txt_len,
+                    add_special_tokens=False,
+                ).to(image.device)
+
+                # Labels: mask prompt, learn answer
+                labels_prompt = torch.full_like(prompt_tokens.input_ids, -100)
+                labels_answer = answer_tokens.input_ids.masked_fill(
+                    answer_tokens.input_ids == self.llm_tokenizer.pad_token_id, -100
+                )
+                targets_tail = torch.cat([labels_prompt, labels_answer], dim=1)
+
+                # Text embeds and attention
+                prompt_embeds = self.llm_model.model.embed_tokens(prompt_tokens.input_ids)
+                answer_embeds = self.llm_model.model.embed_tokens(answer_tokens.input_ids)
+                to_regress_embeds = torch.cat([prompt_embeds, answer_embeds], dim=1)
+                to_regress_attn = torch.cat([prompt_tokens.attention_mask, answer_tokens.attention_mask], dim=1)
+                id_dtype = prompt_tokens.input_ids.dtype
+                id_device = prompt_tokens.input_ids.device
         else:
             text = [t + self.end_sym for t in samples["text_input"]]
             to_regress_tokens = self.llm_tokenizer(
@@ -288,6 +350,10 @@ class skingpt_io(Blip2Base):
         max_txt_len = cfg.get("max_txt_len", 32)
         end_sym = cfg.get("end_sym", '\n')
 
+        # conversation-training config
+        use_conv_training = cfg.get("use_conv_training", True)
+        conv_question = cfg.get("conv_question", "Is the lesion malignant or benign, or other?")
+
         model = cls(
             vit_model=vit_model,
             q_former_model=q_former_model,
@@ -299,6 +365,8 @@ class skingpt_io(Blip2Base):
             freeze_qformer=freeze_qformer,
             num_query_token=num_query_token,
             llm_model=llm_model,
+            use_conv_training=use_conv_training,
+            conv_question=conv_question,
             prompt_path=prompt_path,
             prompt_template=prompt_template,
             max_txt_len=max_txt_len,

@@ -60,30 +60,28 @@ def _normalize(s: str, target: str) -> str:
         out = str(s).strip().lower()
         if "malignant" in out:
             return "malignant"
-        elif "benign" in out:
+        if "benign" in out:
             return "benign"
-        elif "other" in out:
+        if "other" in out:
             return "other"
-        else:
-            return "unknown"
+        return "unknown"
     if target.startswith('text'):
-        if "malignant" in s:
+        out = str(s).strip().lower()
+        if "malignant" in out:
             return "malignant"
-        elif "benign" in s:
+        if "benign" in out:
             return "benign"
-        elif ("other" in s) or ("unknown" in s):
+        if ("other" in out) or ("unknown" in out):
             return "other"
-        else:
-            return "unknown"
+        return "unknown"
 
-def eval_ft_skingpt4(chat, dataset, temperature=0.1, 
+def eval_ft_skingpt4(chat, dataset, temperature=0.1, remove_system=True,
                      target="y3", 
-                     question="Is the lesion malignant or benign, or other?",
                      prompt_keys = None):
     labels = sorted({_normalize(str(dataset[i]['y'][target]), target) for i in range(len(dataset))})
     rows = []
     y_true, y_pred = [], []
-    base_question = question
+    base_question = chat.model.conv_question
     for i in tqdm(range(len(dataset))):
         sample = dataset[i]
         img = sample['image']
@@ -95,7 +93,7 @@ def eval_ft_skingpt4(chat, dataset, temperature=0.1,
             )
             if pre:
                 local_q = f"{pre} {base_question}"
-        pred = _normalize(chat_with_image(chat, img, local_q, temperature=temperature), target)
+        pred = _normalize(chat_with_image(chat, img, local_q, temperature=temperature, remove_system=remove_system), target)
         y_true.append(gt)
         y_pred.append(pred)
         rows.append({
