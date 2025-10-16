@@ -23,4 +23,4 @@ nvidia-smi || true
 export OMP_NUM_THREADS=${SLURM_CPUS_PER_TASK:-1}
 
 cd /scratch/jq2uw/edit-skingpt4
-python3 main_ft.py --model_type gpt_io --retrain --unfreeze_qformer --n_epochs 100
+python3 main_ft.py --model_type gpt_io --unfreeze_qformer --retrain --n_epochs 30
