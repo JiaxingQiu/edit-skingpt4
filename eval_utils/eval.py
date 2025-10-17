@@ -26,7 +26,7 @@ def eval_metrics(
         return_confusion: If True, include a confusion matrix (as a numpy array).
 
     Returns:
-        A dictionary with keys: accuracy, precision, recall, f1, and optionally report, confusion.
+        A dictionary with keys: accuracy, precision, recall, f1, accuracy_malignant, and optionally report, confusion.
     """
     labels = labels or sorted(set(y_true + y_pred))
     acc = accuracy_score(y_true, y_pred)
@@ -34,7 +34,13 @@ def eval_metrics(
         y_true, y_pred, average=average, labels=labels, zero_division=0
     )
 
+    # Binary accuracy for malignant vs non-malignant
+    y_true_binary = [1 if label == "malignant" else 0 for label in y_true]
+    y_pred_binary = [1 if label == "malignant" else 0 for label in y_pred]
+    acc_malignant = accuracy_score(y_true_binary, y_pred_binary)
+
     result: Dict[str, Any] = {
+        "accuracy_malignant": acc_malignant,
         "accuracy": acc,
         "precision": precision,
         "recall": recall,
