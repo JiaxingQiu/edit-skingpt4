@@ -64,6 +64,12 @@ def _humanize_impression(text: Optional[str]) -> Optional[str]:
     t = t.replace("bcc", "BCC").replace("scc", "SCC")
     return t
 
+def _dedupe_periods(text: Optional[str]) -> Optional[str]:
+    """Collapse any run of 2+ periods to a single period."""
+    if not text:
+        return text
+    return re.sub(r"\.{2,}", ".", text)
+
 def row_to_natural_text(row) -> Tuple[str, str, str, str]:
     """
     Outcome: This patient’s diagnosis is {y16} ({y3}). {y16_description} {path_report_sentence}
@@ -153,6 +159,13 @@ def row_to_natural_text(row) -> Tuple[str, str, str, str]:
 
     # Full paragraph
     full = " ".join([t for t in [text_outcome, demographics_text, lesion_text] if t]).strip()
+
+    # Safeguard: remove accidental double periods in all returned texts
+    full = _dedupe_periods(full)
+    text_outcome = _dedupe_periods(text_outcome)
+    demographics_text = _dedupe_periods(demographics_text)
+    lesion_text = _dedupe_periods(lesion_text)
+
     return full, text_outcome, text_y3, text_y16, demographics_text, lesion_text
 
 # Usage:

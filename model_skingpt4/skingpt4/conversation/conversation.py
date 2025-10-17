@@ -136,12 +136,12 @@ class Chat:
             conv.append_message(conv.roles[0], text)
 
     def answer(self, conv, img_list, max_new_tokens=300, num_beams=1, min_length=1, top_p=0.9,
-               repetition_penalty=1.0, length_penalty=1, temperature=1.0, max_length=2000):
+               repetition_penalty=1.0, length_penalty=1, temperature=1.0, max_length=2000, print_prompt=False):
         
         self.model.eval()
         conv.append_message(conv.roles[1], None)
         with torch.no_grad():
-            embs = self.get_context_emb(conv, img_list)
+            embs = self.get_context_emb(conv, img_list, print_prompt)
             current_max_len = embs.shape[1] + max_new_tokens
             if current_max_len - max_length > 0:
                 print('Warning: The number of tokens in current conversation exceeds the max length. '
@@ -193,14 +193,14 @@ class Chat:
         # self.conv.append_message(self.conv.roles[1], msg)
         return msg
 
-    def get_context_emb(self, conv, img_list):
+    def get_context_emb(self, conv, img_list, print_prompt=False):
         self.model.eval()
         with torch.no_grad():
             prompt = conv.get_prompt()
-            # Debug: print the exact text prompt used around image placeholders
-            print("\n=== Conversation Prompt (raw) ===")
-            print(prompt)
-            print("=== End Conversation Prompt ===\n")
+            if print_prompt: # Print the exact text prompt used around image placeholders for debugging
+                print("=== Prompt ===")
+                print(prompt)
+                print("==============")
             prompt_segs = prompt.split('<ImageHere>')
             assert len(prompt_segs) == len(img_list) + 1, "Unmatched numbers of image placeholders and images."
             seg_tokens = [

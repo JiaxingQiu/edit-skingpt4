@@ -49,7 +49,7 @@ class MIDASFTSkGPT4Dataset(Dataset):
 # sum(p.numel() for p in model.parameters() if p.requires_grad), sum(p.numel() for p in model.parameters())
 
 
-
+import re
 # IO dataset: returns {"image", "prompt_input", "answer_output"}
 class MIDASFTSkGPTIODataset(Dataset):
     def __init__(self, base_dataset, vis_processor, prompt_keys=["text_demo", "text_lesion"], answer_keys=["text_outcome"]):
@@ -76,7 +76,10 @@ class MIDASFTSkGPTIODataset(Dataset):
         y = item.get("y", {}) or {}
         prompt = " ".join([(y.get(k, "") or "").strip() for k in self.prompt_keys if (y.get(k, "") or "").strip()])
         answer = " ".join([(y.get(k, "") or "").strip() for k in self.answer_keys if (y.get(k, "") or "").strip()])
-
+        
+        # Safeguard: collapse any multiple consecutive periods that might have been introduced during joining
+        prompt = re.sub(r'\.{2,}', '.', prompt)
+        answer = re.sub(r'\.{2,}', '.', answer)
         return {"image": img_tensor, "prompt_input": prompt, "answer_output": answer}
 
     def collate_fn(self, batch):

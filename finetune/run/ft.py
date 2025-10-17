@@ -9,5 +9,7 @@ else:
 
 train_loader = train_ds_ft.get_loader(batch_size=2, shuffle=True, num_workers=2)
 val_loader   = val_ds_ft.get_loader(batch_size=2, shuffle=False, num_workers=2)
+if args.continue_train:
+    model.finetune(train_loader, val_loader, n_epochs=args.n_epochs, retrain=False, lr=args.init_lr, ckpt_path=args.ft_ckpt_path)# load the last checkpoint
 model.finetune(train_loader, val_loader, n_epochs=args.n_epochs, retrain=args.retrain, lr=args.init_lr, ckpt_path=args.ft_ckpt_path)
 

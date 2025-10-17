@@ -313,7 +313,7 @@ class skingpt4(Blip2Base):
                 lr=1e-4, weight_decay=0.0, ckpt_path="./model_skingpt4/weights/finetune_llama.pth"):
         if retrain or not os.path.exists(ckpt_path):
             optimizer = AdamW((p for p in self.parameters() if p.requires_grad), lr=lr, weight_decay=weight_decay)
-            scheduler = ReduceLROnPlateau(optimizer, mode="min", factor=0.5, patience=5, min_lr=1e-8, verbose=True)
+            scheduler = ReduceLROnPlateau(optimizer, mode="min", factor=0.8, patience=10, min_lr=1e-10, verbose=True)
             scaler = GradScaler(enabled=True)
             best_val = float("inf")
 

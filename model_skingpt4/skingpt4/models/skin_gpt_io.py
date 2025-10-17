@@ -424,7 +424,7 @@ class skingpt_io(Blip2Base):
                 if p.requires_grad:
                     p.data = p.data.float()
             optimizer = AdamW((p for p in self.parameters() if p.requires_grad), lr=lr, weight_decay=weight_decay)
-            scheduler = ReduceLROnPlateau(optimizer, mode="min", factor=0.5, patience=5, min_lr=1e-8, verbose=True)
+            scheduler = ReduceLROnPlateau(optimizer, mode="min", factor=0.8, patience=10, min_lr=1e-10, verbose=True)
             scaler = GradScaler(enabled=True)
             best_val = float("inf")
 

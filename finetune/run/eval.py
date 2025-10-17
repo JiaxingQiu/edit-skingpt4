@@ -1,17 +1,18 @@
 import random
 # --- print one example ---
-N = min(20, len(test_dataset))
-idxs = random.sample(range(len(test_dataset)), N)
-for i in idxs: # sample 20 between 1 and len(test_dataset)
+exp_ds = train_dataset #test_dataset
+N = min(20, len(exp_ds))
+idxs = random.sample(range(len(exp_ds)), N)
+for i in idxs: # sample 20 between 1 and len(exp_ds)
     print("-" * 50)
-    image = test_dataset[i]['image']
+    image = exp_ds[i]['image']
     ending_question = chat.model.conv_question
-    print(f"ground truth: {test_dataset[i]['y'][args.eval_target]}")
+    print(f"ground truth: {exp_ds[i]['y'][args.eval_target]}")
     # prepare question (local_q)
     if args.model_type == "gpt_io":
         prompt = ""
         for k in args.prompt_keys:
-            prompt += f"{test_dataset[i]['y'][k]}. "
+            prompt += f"{exp_ds[i]['y'][k]} "
         question = prompt + ending_question
     else:
         question = ending_question
@@ -21,7 +22,7 @@ for i in idxs: # sample 20 between 1 and len(test_dataset)
     print(resp)
     print(f"Finetuned model ({model_name})")
     model = load_model_weights(model, args.ft_ckpt_path)
-    resp = chat_with_image(chat, image, question, temperature=args.temperature, remove_system=args.remove_system)
+    resp = chat_with_image(chat, image, question, temperature=args.temperature, remove_system=args.remove_system, print_prompt=True)
     print(resp)    
 
 

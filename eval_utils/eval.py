@@ -55,6 +55,7 @@ def eval_metrics(
 from tqdm import tqdm
 import pandas as pd
 from model_skingpt4 import *
+import re
 def _normalize(s: str, target: str) -> str:
     if target == "y3":
         out = str(s).strip().lower()
@@ -92,6 +93,7 @@ def eval_ft_skingpt4(chat, dataset, temperature=0.1, remove_system=True,
                 (str(sample['y'].get(k, "")).strip() for k in prompt_keys if sample['y'].get(k))
             )
             if pre:
+                pre = re.sub(r'\.{2,}', '.', pre)
                 local_q = f"{pre} {base_question}"
         pred = _normalize(chat_with_image(chat, img, local_q, temperature=temperature, remove_system=remove_system), target)
         y_true.append(gt)

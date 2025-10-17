@@ -76,7 +76,7 @@ def load_model_weights(model, model_path: str):
     return model
 
 
-def chat_with_image(chat, image, question, num_beams=1, temperature=0.01, remove_system=True):
+def chat_with_image(chat, image, question, num_beams=1, temperature=0.01, remove_system=True, print_prompt=False):
     chat_state = CONV_VISION.copy()
     if remove_system:
         chat_state.system = ""  # mirror training: no system line
@@ -88,6 +88,7 @@ def chat_with_image(chat, image, question, num_beams=1, temperature=0.01, remove
         img_list=img_list,
         num_beams=num_beams,
         temperature=temperature,
-        max_new_tokens=50
+        max_new_tokens=50,
+        print_prompt=print_prompt
     )[0]
     return response
