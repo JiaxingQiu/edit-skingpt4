@@ -123,7 +123,7 @@ def _normalize(s: str, target: str) -> str:
             return "other"
         return "unknown"
 
-def eval_ft_skingpt4(chat, dataset, temperature=0.1, remove_system=True,
+def eval_ft_skingpt4(chat, dataset, temperature=0.0, remove_system=True,
                      target="y3", 
                      prompt_keys = None,
                      train_mode=True):

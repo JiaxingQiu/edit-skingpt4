@@ -35,7 +35,7 @@ if __name__ == "__main__":
     # for eval 
     parser.add_argument("--eval_target", default = "y3", help="Single y-field (e.g., y3, y16, text_full) as eval target")
     parser.add_argument("--keep_system", action="store_true", help="Keep system prompt for eval") # for gpt4
-    parser.add_argument("--temperature", type=float, default=0.001, help="Temperature for eval")
+    parser.add_argument("--temperature", type=float, default=0.0, help="Temperature for eval")
     parser.add_argument("--train_mode", action="store_true", help="Train mode for eval")
     args = parser.parse_args()
     run(args)
