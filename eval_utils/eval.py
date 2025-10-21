@@ -126,7 +126,7 @@ def _normalize(s: str, target: str) -> str:
 def eval_ft_skingpt4(chat, dataset, temperature=0.1, remove_system=True,
                      target="y3", 
                      prompt_keys = None,
-                     train_mode=False):
+                     train_mode=True):
     labels = sorted({_normalize(str(dataset[i]['y'][target]), target) for i in range(len(dataset))})
     rows = []
     y_true, y_pred = [], []
