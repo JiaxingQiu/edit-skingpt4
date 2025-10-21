@@ -51,8 +51,8 @@ def load_model(name, model_type, is_eval=False, device="cpu", checkpoint=None):
     if checkpoint is not None:
         model.load_checkpoint(checkpoint)
 
-    if is_eval:
-        model.eval()
+    # if is_eval:
+    #     model.eval()
 
     if device == "cpu":
         model = model.float()
@@ -136,8 +136,8 @@ def load_model_and_preprocess(name, model_type, is_eval=False, device="cpu"):
     # load model
     model = model_cls.from_pretrained(model_type=model_type)
 
-    if is_eval:
-        model.eval()
+    # if is_eval:
+    #     model.eval()
 
     # load preprocess
     cfg = OmegaConf.load(model_cls.default_config_path(model_type))

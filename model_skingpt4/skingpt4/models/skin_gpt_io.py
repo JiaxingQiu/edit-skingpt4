@@ -431,8 +431,8 @@ class skingpt_io(Blip2Base):
             try:
                 for epoch in range(n_epochs):
                     train_loss = self.run_epoch(train_loader, optimizer, scaler, train=True)
-                    with torch.no_grad():
-                        val_loss = self.run_epoch(val_loader, train=False)
+                    val_loss = self.run_epoch(val_loader, optimizer, scaler, train=True) # set to this for debugging
+                    # val_loss = self.run_epoch(val_loader, train=False)
                     print(f"epoch {epoch+1}/{n_epochs}  train_loss={train_loss:.4f}  val_loss={val_loss:.4f}")
 
                     if val_loss < best_val:
@@ -442,13 +442,10 @@ class skingpt_io(Blip2Base):
             except KeyboardInterrupt:
                 torch.save({"model": self.state_dict()}, ckpt_path)
                 print(f"\nKeyboardInterrupt: saved checkpoint to {ckpt_path}")
-            finally:
-                self.eval()
         else:
             state = torch.load(ckpt_path, map_location="cpu")
             state = state.get("model", state)
             _ = self.load_state_dict(state, strict=False)
-            self.eval()
 
     # example usage
     # model.finetune(train_loader, val_loader, n_epochs=1, retrain=False,
