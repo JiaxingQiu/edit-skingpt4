@@ -431,8 +431,9 @@ class skingpt_io(Blip2Base):
             try:
                 for epoch in range(n_epochs):
                     train_loss = self.run_epoch(train_loader, optimizer, scaler)
-                    with torch.no_grad():
-                        val_loss = self.run_epoch(val_loader) # train mode but no gradient updates
+                    val_loss = self.run_epoch(val_loader, optimizer, scaler)
+                    # with torch.no_grad():
+                    #     val_loss = self.run_epoch(val_loader) # train mode but no gradient updates
                     print(f"epoch {epoch+1}/{n_epochs}  train_loss={train_loss:.4f}  val_loss={val_loss:.4f}")
 
                     if val_loss < best_val:
