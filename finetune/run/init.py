@@ -18,7 +18,7 @@ model, vis_processor, chat = init_chat(cfg)
 sum(p.numel() for p in model.parameters() if p.requires_grad), sum(p.numel() for p in model.parameters())
 
 # --- model name (key for weights and results saving)---
-model_name = f"ft_skin{args.model_type}_{args.eval_target}" # universal model name
+model_name = f"ft_skin{args.model_type}_{args.eval_target}{args.suffix}" # universal model name
 unfreeze_suffix = "" # default unfreeze is the alignment layer
 if args.unfreeze_vit:
     unfreeze_suffix += "_vit"

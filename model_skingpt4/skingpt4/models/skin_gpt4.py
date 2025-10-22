@@ -276,10 +276,10 @@ class skingpt4(Blip2Base):
 
         return model
     
-    def run_epoch(self, loader, optimizer=None, scaler=None, train=True):
+    def run_epoch(self, loader, optimizer=None, scaler=None):
         # loader should be a MIDASFTSkGPT4Dataset instance
         device = next(self.parameters()).device
-        self.train(mode=train)
+        self.train()
         total_loss, n = 0.0, 0
 
         for batch in loader:
@@ -287,14 +287,14 @@ class skingpt4(Blip2Base):
             texts  = batch["text_input"]
             samples = {"image": images, "text_input": texts}
 
-            if train:
+            if optimizer is not None:
                 optimizer.zero_grad(set_to_none=True)
 
             with autocast(enabled=True):
                 out = self(samples)
                 loss = out["loss"]
 
-            if train:
+            if scaler is not None:
                 scaler.scale(loss).backward()
                 scaler.step(optimizer)
                 scaler.update()
@@ -319,9 +319,9 @@ class skingpt4(Blip2Base):
 
             try:
                 for epoch in range(n_epochs):
-                    train_loss = self.run_epoch(train_loader, optimizer, scaler, train=True)
-                    val_loss = self.run_epoch(val_loader, optimizer, scaler, train=True) # set to this for debugging
-                    # val_loss = self.run_epoch(val_loader, train=False) 
+                    train_loss = self.run_epoch(train_loader, optimizer, scaler)
+                    with torch.no_grad():
+                        val_loss = self.run_epoch(val_loader) # train mode but no gradient updates
                     print(f"epoch {epoch+1}/{n_epochs}  train_loss={train_loss:.4f}  val_loss={val_loss:.4f}")
 
                     if val_loss < best_val:

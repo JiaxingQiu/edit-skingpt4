@@ -8,7 +8,9 @@ from transformers import StoppingCriteria, StoppingCriteriaList
 
 import dataclasses
 from enum import auto, Enum
-from typing import List, Tuple, Any
+from typing import List, Tuple, Any, Optional, Dict
+import json
+import math
 
 from skingpt4.common.registry import registry
 
@@ -136,7 +138,8 @@ class Chat:
 
     @torch.no_grad()
     def answer(self, conv, img_list, max_new_tokens=300, num_beams=1, min_length=1, top_p=0.9,
-               repetition_penalty=1.0, length_penalty=1, temperature=0.0, max_length=2000, print_prompt=False, train_mode=False):
+               repetition_penalty=1.0, length_penalty=1, temperature=0.0, max_length=2000, print_prompt=False, train_mode=False,
+               label_words: Optional[List[str]] = None):
         if train_mode:
             self.model.train()
         else:
@@ -172,7 +175,22 @@ class Chat:
         output_text = output_text.split('###')[0]  # remove the stop sign '###'
         output_text = output_text.split('Assistant:')[-1].strip()
         conv.messages[-1][1] = output_text
-        return output_text, output_token.cpu().numpy()
+
+        label_losses = None
+        label_losses_str = ""
+        if label_words:
+            # Compute cross-entropy for each candidate continuation given the same context
+            label_losses = self._score_label_words(embs, label_words)
+            # format label_losses into a string 
+            label_losses_str = json.dumps(label_losses, separators=(',', ':'), sort_keys=True)
+
+        response_dict = {
+            "output_text": output_text,
+            "output_token": output_token.cpu().numpy(),
+            "label_losses": label_losses,
+            "label_losses_str": label_losses_str,
+        }
+        return response_dict
 
     def upload_img(self, image, conv, img_list):
         if isinstance(image, str):  # is a image path
@@ -210,6 +228,58 @@ class Chat:
         mixed_embs = [emb for pair in zip(seg_embs[:-1], img_list) for emb in pair] + [seg_embs[-1]]
         mixed_embs = torch.cat(mixed_embs, dim=1)
         return mixed_embs
+
+    def _nll_to_probs(self, label_losses: Dict[str, Dict[str, float]], use_avg: bool = False, temperature: float = 1.0) -> Dict[str, float]:
+        scores = {}
+        temp = max(1e-8, float(temperature))
+        for lbl, d in label_losses.items():
+            nll = float(d['avg_nll'] if use_avg else d['sum_nll'])
+            scores[lbl] = -(nll) / temp
+        m = max(scores.values()) if scores else 0.0
+        exps = {lbl: math.exp(s - m) for lbl, s in scores.items()}
+        Z = sum(exps.values()) or 1.0
+        return {lbl: v / Z for lbl, v in exps.items()}
+
+    def _score_label_words(self, context_embs: torch.Tensor, label_words: List[str], use_prob: bool = True, use_avg: bool = False, temperature: float = 1.0) -> Dict[str, Dict[str, float]]:
+        # Scores each label word by negative log-likelihood (sum and average over its tokens)
+        results = {}
+        context_len = context_embs.shape[1]
+        for word in label_words:
+            tokenized = self.model.llm_tokenizer(
+                " " + word,
+                return_tensors="pt",
+                add_special_tokens=False,
+            )
+            cand_ids = tokenized.input_ids.to(self.device)  # shape: [1, T]
+            # Embed candidate tokens
+            cand_embs = self.model.llm_model.model.embed_tokens(cand_ids)
+            # Build full embeddings: context + candidate
+            full_embs = torch.cat([context_embs, cand_embs], dim=1)
+            # Labels: ignore context, supervise candidate tokens
+            labels = torch.full(
+                (1, full_embs.shape[1]),
+                -100,
+                dtype=torch.long,
+                device=self.device,
+            )
+            labels[0, context_len:context_len + cand_ids.shape[1]] = cand_ids[0]
+            outputs = self.model.llm_model(
+                inputs_embeds=full_embs,
+                labels=labels,
+                return_dict=True,
+            )
+            avg_nll = float(outputs.loss.item())  # mean over candidate tokens
+            num_tokens = int(cand_ids.shape[1])
+            sum_nll = avg_nll * num_tokens
+            results[word] = {"sum_nll": sum_nll,
+                             "avg_nll": avg_nll,
+                             "num_tokens": float(num_tokens)}
+        if use_prob and results:
+            probs = self._nll_to_probs(results, use_avg=use_avg, temperature=temperature)
+            for lbl, p in probs.items():
+                if lbl in results:
+                    results[lbl]["prob"] = float(p)
+        return results
 
 
 

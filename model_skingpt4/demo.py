@@ -97,13 +97,13 @@ def gradio_ask(user_message, chatbot, chat_state):
 
 
 def gradio_answer(chatbot, chat_state, img_list, num_beams, temperature):
-    llm_message = chat.answer(conv=chat_state,
-                              img_list=img_list,
-                              num_beams=num_beams,
-                              temperature=temperature,
-                              max_new_tokens=300,
-                              max_length=2000)[0]
-    chatbot[-1][1] = llm_message
+    result = chat.answer(conv=chat_state,
+                         img_list=img_list,
+                         num_beams=num_beams,
+                         temperature=temperature,
+                         max_new_tokens=300,
+                         max_length=2000)
+    chatbot[-1][1] = result.get("output_text", "")
     return chatbot, chat_state, img_list
 
 

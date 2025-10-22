@@ -1,10 +1,14 @@
 from typing import Any, Dict, Optional, Sequence
+import json
 from sklearn.metrics import (
     accuracy_score,
     precision_recall_fscore_support,
     classification_report,
     confusion_matrix,
+    roc_auc_score,
+    average_precision_score,
 )
+
 
 
 def eval_metrics(
@@ -104,6 +108,8 @@ import pandas as pd
 from model_skingpt4 import *
 import re
 def _normalize(s: str, target: str) -> str:
+    if "###NLL:" in s:
+        s = s.split("###NLL:")[0]
     if target == "y3":
         out = str(s).strip().lower()
         if "malignant" in out:
@@ -123,6 +129,71 @@ def _normalize(s: str, target: str) -> str:
             return "other"
         return "unknown"
 
+def _normalize_nll(s: str) -> Dict[str, float]:
+    import json
+    i = s.rfind("###NLL:")
+    if i == -1:
+        return {}
+    try:
+        return json.loads(s[i+len("###NLL:"):].strip())
+    except Exception:
+        return {}
+
+
+def compute_auroc_auprc_from_nll(
+    y_true: Sequence[str],
+    responses: Sequence[str],
+    labels: Optional[Sequence[str]] = None,
+    score_by = "prob", # "sum_nll" or "avg_nll" or "prob"
+) -> Dict[str, Any]:
+    labels = list(labels) if labels is not None else sorted(set(y_true))
+    y_true_by_label = {lbl: [] for lbl in labels}
+    scores_by_label = {lbl: [] for lbl in labels}
+    for yt, resp in zip(y_true, responses):
+        nll = _normalize_nll(resp)
+        if not isinstance(nll, dict):
+            continue
+        for lbl in labels:
+            d = nll.get(lbl)
+            if isinstance(d, dict) and (score_by in d):
+                y_true_by_label[lbl].append(1 if yt == lbl else 0)
+                if score_by == "prob":
+                    scores_by_label[lbl].append(float(d[score_by]))
+                else:
+                    scores_by_label[lbl].append(-float(d[score_by])) # negative the nll to get ll
+
+    per_label_auroc, per_label_auprc = {}, {}
+    for lbl in labels:
+        ys = y_true_by_label[lbl]
+        ss = scores_by_label[lbl]
+        if len(ys) >= 2 and len(set(ys)) > 1 and len(ss) == len(ys):
+            try:
+                per_label_auroc[lbl] = float(roc_auc_score(ys, ss))
+            except Exception:
+                per_label_auroc[lbl] = None
+            try:
+                per_label_auprc[lbl] = float(average_precision_score(ys, ss))
+            except Exception:
+                per_label_auprc[lbl] = None
+        else:
+            per_label_auroc[lbl] = None
+            per_label_auprc[lbl] = None
+
+    malignant = {
+        "auroc": per_label_auroc.get("malignant"),
+        "auprc": per_label_auprc.get("malignant"),
+    }
+    macro_vals_roc = [v for v in per_label_auroc.values() if v is not None]
+    macro_vals_prc = [v for v in per_label_auprc.values() if v is not None]
+    multiclass = {
+        "auroc": float(sum(macro_vals_roc) / len(macro_vals_roc)) if macro_vals_roc else None,
+        "auprc": float(sum(macro_vals_prc) / len(macro_vals_prc)) if macro_vals_prc else None,
+    }
+    return {
+        "malignant": malignant,
+        "multiclass": multiclass,
+    }
+
 def eval_ft_skingpt4(chat, dataset, temperature=0.0, remove_system=True,
                      target="y3", 
                      prompt_keys = None,
@@ -130,6 +201,7 @@ def eval_ft_skingpt4(chat, dataset, temperature=0.0, remove_system=True,
     labels = sorted({_normalize(str(dataset[i]['y'][target]), target) for i in range(len(dataset))})
     rows = []
     y_true, y_pred = [], []
+    responses = []
     base_question = chat.model.conv_question
     for i in tqdm(range(len(dataset))):
         sample = dataset[i]
@@ -143,7 +215,9 @@ def eval_ft_skingpt4(chat, dataset, temperature=0.0, remove_system=True,
             if pre:
                 pre = re.sub(r'\.{2,}', '.', pre)
                 local_q = f"{pre} {base_question}"
-        pred = _normalize(chat_with_image(chat, img, local_q, temperature=temperature, remove_system=remove_system, train_mode=train_mode), target)
+        resp = chat_with_image(chat, img, local_q, temperature=temperature, remove_system=remove_system, train_mode=train_mode)
+        pred = _normalize(resp, target)
+        responses.append(resp)
         y_true.append(gt)
         y_pred.append(pred)
         rows.append({
@@ -159,5 +233,13 @@ def eval_ft_skingpt4(chat, dataset, temperature=0.0, remove_system=True,
         return_report=True,
         return_confusion=True,
     )
+    # Attach AUROC/AUPRC computed from NLL footer
+    nll_aucs = compute_auroc_auprc_from_nll(y_true, responses, labels)
+    if 'malignant' in metrics:
+        metrics['malignant']['auroc'] = nll_aucs['malignant']['auroc']
+        metrics['malignant']['auprc'] = nll_aucs['malignant']['auprc']
+    if 'multiclass' in metrics:
+        metrics['multiclass']['auroc'] = nll_aucs['multiclass']['auroc']
+        metrics['multiclass']['auprc'] = nll_aucs['multiclass']['auprc']
     return metrics
     
