@@ -138,7 +138,7 @@ class Chat:
 
     @torch.no_grad()
     def answer(self, conv, img_list, max_new_tokens=300, num_beams=1, min_length=1, top_p=0.9,
-               repetition_penalty=1.0, length_penalty=1, temperature=0.0, max_length=2000, print_prompt=False, train_mode=False,
+               repetition_penalty=1.0, length_penalty=1, temperature=0.0, max_length=2000, print_prompt=False, train_mode=True,
                label_words: Optional[List[str]] = None):
         if train_mode:
             self.model.train()

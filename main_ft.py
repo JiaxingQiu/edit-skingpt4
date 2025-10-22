@@ -17,7 +17,6 @@ def run(args):
     print(f"no_conv_training: {args.no_conv_training}")
     print(f"keep_system   : {args.keep_system}")
     print(f"temperature   : {args.temperature}")
-    print(f"train_mode    : {args.train_mode}")
     print(f"suffix        : {args.suffix}")
 
 if __name__ == "__main__":
@@ -37,7 +36,7 @@ if __name__ == "__main__":
     parser.add_argument("--eval_target", default = "y3", help="Single y-field (e.g., y3, y16, text_full) as eval target")
     parser.add_argument("--keep_system", action="store_true", help="Keep system prompt for eval") # for gpt4
     parser.add_argument("--temperature", type=float, default=0.0, help="Temperature for eval")
-    parser.add_argument("--train_mode", action="store_true", help="Train mode for generating responses")
+    # parser.add_argument("--train_mode", action="store_true", default=True, help="Train mode for generating responses")
     parser.add_argument("--suffix", default="", help="optional suffix for model name")
     args = parser.parse_args()
     run(args)
@@ -47,6 +46,7 @@ if __name__ == "__main__":
     args.freeze_qformer = not args.unfreeze_qformer
     args.use_conv_training = not args.no_conv_training
     args.remove_system = not args.keep_system
+    args.train_mode = True # default to train mode for generating responses
 
     # project directory (root of main)
     ROOT = Path(__file__).resolve().parent      

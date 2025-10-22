@@ -75,7 +75,7 @@ def load_model_weights(model, model_path: str):
     return model
 
 
-def chat_with_image(chat, image, question, num_beams=1, temperature=0.01, remove_system=True, print_prompt=False, train_mode=False,
+def chat_with_image(chat, image, question, num_beams=1, temperature=0.01, remove_system=True, print_prompt=False, train_mode=True,
                     label_words=["malignant", "benign", "other"]):
     chat_state = CONV_VISION.copy()
     if remove_system:
