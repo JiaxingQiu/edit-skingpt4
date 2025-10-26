@@ -23,7 +23,8 @@ class MIDASDataset(Dataset):
         img = PILImage.open(img_path)#.convert('RGB')
         return {
             'image': img,
-            'y': row[['y3', 'y16', 'y16_description'] + [col for col in row.index if col.startswith('text')]].to_dict(),
+            'x': row[[col for col in row.index if col.startswith('x')]+['text_x_skintype', 'text_x_location']].to_dict(),
+            'y': row[['y3', 'y16', 'y16_description'] + ["text_full", "text_outcome", "text_y3", "text_y16"] ].to_dict(),
             'demo': row[[col for col in row.index if col.startswith('demo')]].to_dict(),
             'lesion': row[[col for col in row.index if col.startswith('lesion')]].to_dict(),
             'notes': row[[col for col in row.index if col.startswith('notes')]].to_dict(),
@@ -60,15 +61,17 @@ def process_tabular(data_dir):
     df = process_x_demo(df)
     df = process_x_lesion(df)
     df = process_x_notes(df)
+    df = process_x_skintype(df)
+    df = process_x_location(df)
     df = image_tabular_mapping(df, data_dir)
     text_cols = df.apply(lambda r: pd.Series(
         row_to_natural_text(r),
-        index=["text_full","text_outcome","text_y3","text_y16","text_demo","text_lesion"]
+        index=["text_full","text_outcome","text_y3","text_y16","text_x_skintype","text_x_location","text_demo","text_lesion"]
     ), axis=1)
     df = pd.concat([df, text_cols], axis=1)
 
     # Keep columns that start with id, y, demo, lesion, notes
-    keep_columns = [col for col in df.columns if any(col.startswith(prefix) for prefix in ['id', 'y', 'demo', 'lesion', 'notes', 'text'])]
+    keep_columns = [col for col in df.columns if any(col.startswith(prefix) for prefix in ['id', 'y', 'x', 'demo', 'lesion', 'notes', 'text'])]
     df = df[keep_columns]
     print(f"Final dataset shape: {df.shape}")
     print(f"Columns kept: {list(df.columns)}")
@@ -206,6 +209,126 @@ def process_x_notes(df):
     # print(f"notes_pathreport: {df['notes_pathreport'].value_counts().to_dict()}")
     return df
  
+# 5. x predictor skintype
+def process_x_skintype(df):
+    # x_skintype is from demo_fitzpatrick_skintype
+    df = df.copy()
+    mapping_x1 = {
+        "i pale white skin, blue/green eyes, blond/red hair": "light white skin",
+        "ii fair skin, blue eyes": "white skin",
+        "iii darker white skin": "dark white skin",
+        "iv light brown skin": "light brown skin",
+        "v brown skin": "brown skin",
+        "vi dark brown or black skin": "dark brown skin",
+        "unknown": "unknown",  # or use np.nan
+    }
+    df["x_skintype"] = (
+        df["demo_fitzpatrick_skintype"]
+        .str.lower()
+        .map(mapping_x1)
+        .fillna("unknown")
+    )
+    print(f"x_skintype: {df['x_skintype'].nunique()}")
+    print(f"x_skintype: {df['x_skintype'].value_counts().to_dict()}")
+    return df
+
+# 6. x predictor lesion location (8 + other high-level regions)
+def process_x_location(df):
+    df = df.copy()
+
+    def _clean_location(s):
+        if pd.isna(s):
+            return s
+        s = s.lower().strip()
+
+        # Remove directional / side descriptors
+        s = re.sub(r'\b(left|right|upper|lower|middle|mid|central|medial|lateral|posterior|anterior|superior|inferior|proximal|distal)\b', '', s)
+
+        # Remove words like "region", "area", "skin", "surface"
+        s = re.sub(r'\b(region|area|skin|surface)\b', '', s)
+
+        # Remove special chars, parentheses, extra spaces
+        s = re.sub(r'[\(\)\[\]{}]', '', s)
+        s = re.sub(r'[-_/]+', ' ', s)
+        s = re.sub(r'\s+', ' ', s).strip()
+
+        # Unify common variants (e.g., post auricular → postauricular)
+        s = s.replace('post auricular', 'postauricular')
+        s = s.replace('pre auricular', 'preauricular')
+        s = s.replace('infra mammary', 'inframammary')
+        s = s.replace('supra pubic', 'suprapubic')
+        s = s.replace('buttox', 'buttock')
+
+        # Simplify redundant phrases like "back (this is mislabeled...)" 
+        s = re.sub(r'\b(back ).*', 'back', s)
+
+        return s.strip()
+
+    df['x_location'] = df['lesion_location'].apply(_clean_location)
+
+    region_map = { # 8 categories
+        # Head
+        'cheek': 'head', 'forehead': 'head', 'temple': 'head',
+        'eyelid': 'head', 'eyebrow': 'head', 'lip': 'head',
+        'cutaneous lip': 'head', 'vermilion lip': 'head',
+        'vermilion border': 'head', 'vermilion border of lip': 'head',
+        'philtrum': 'head', 'chin': 'head', 'jaw': 'head',
+        'jawline': 'head', 'malar cheek': 'head', 'mandible': 'head',
+        'melolabia fold': 'head', 'nose': 'head', 'nasal bridge': 'head',
+        'nasal dorsum': 'head', 'nasal sidewall': 'head', 'nasal ala': 'head',
+        'nasal tip': 'head', 'nasal supratip': 'head', 'supra nasal tip': 'head',
+        'alar crease': 'head', 'alar crease peri nasal': 'head', 
+        'alar crease of nose': 'head', 'nose tip': 'head', 'canthus': 'head',
+        'preauricular': 'head', 'postauricular': 'head', 'retro auricular': 'head',
+        'preauricular cheek': 'head', 'side burn': 'head', 'sideburn': 'head',
+        'occiput': 'head', 'frontal hairline': 'head', 'submental jaw': 'head',
+        'frontal scalp': 'head', 'crown of scalp': 'head', 'vertex scalp': 'head',
+        'scalp': 'head', 'scalp vertex': 'head', 'parietal scalp': 'head',
+        'rt parietal': 'head', 'vertex': 'head', 'ear': 'head',
+        'helix': 'head', 'helix of ear': 'head', 'antihelix': 'head',
+        'antitragus': 'head', 'ear scapha': 'head', 'conchal bowl': 'head',
+        'lobule of ear': 'head',
+
+        # Neck
+        'neck': 'neck', 'root of neck': 'neck', 'base of neck': 'neck',
+        'midline neck': 'neck',
+
+        # Torso (chest, back, abdomen, flank)
+        'back': 'torso', 'low back': 'torso', 'chest': 'torso', 'low chest': 'torso',
+        'midright chest': 'torso', 'abdomen': 'torso', 'flank': 'torso', 'ribcage': 'torso',
+        'scapula': 'torso', 'clavicle': 'torso', 'breast': 'torso',
+        'inframammary': 'torso', 'hypogastric': 'torso', 'suprapubic': 'torso',
+        'umbilicus': 'torso', 'infirmary breast': 'torso',
+
+        # Shoulder & Arm
+        'shoulder': 'arm', 'deltoid': 'arm', 'arm': 'arm', 'forearm': 'arm',
+        'dorsal forearm': 'arm', 'inner arm': 'arm', 'elbow': 'arm',
+        'elbow joint': 'arm', 'axilla': 'arm', 'wrist': 'arm', 'hand radial': 'arm',
+
+        # Hand & Fingers
+        'hand': 'hand', 'dorsal hand': 'hand', 'hand ulnar': 'hand', 'finger': 'hand',
+        '2nd finger': 'hand', '3rd finger': 'hand', '4th finger': 'hand', '5th finger': 'hand',
+        'index finger': 'hand', 'thumb base': 'hand', 'pinky': 'hand', 'r4 digit': 'hand',
+
+        # Leg (thigh, shin, calf, knee)
+        'leg': 'leg', 'thigh': 'leg', 'shin': 'leg', 'l shin': 'leg', 'calf': 'leg',
+        'post calf': 'leg', 'popliteal': 'leg', 'popliteal fossa': 'leg', 'knee': 'leg',
+
+        # Foot & Ankle
+        'foot': 'foot', 'dorsal foot': 'foot', 'heel': 'foot', 'plantar heel': 'foot',
+        'plantar arch': 'foot', 'malleolus': 'foot', 'ankle': 'foot',
+        '4th dorsal toe': 'foot', 'dorsal 2nd toe': 'foot', '3rd intertarsal': 'foot',
+
+        # Pelvic / Groin / Buttock
+        'groin': 'pelvic', 'inguinal fold': 'pelvic', 'inguinal crease': 'pelvic',
+        'mons pubis': 'pelvic', 'buttock': 'pelvic', 'hip': 'pelvic',
+        'superomedial thigh': 'pelvic', 'leg melanoma scar': 'pelvic',
+    }
+    
+    df['x_location'] = df['x_location'].map(region_map).fillna('other')
+    print(f"x_location: {df['x_location'].nunique()}")
+    print(f"x_location: {df['x_location'].value_counts().to_dict()}")
+    return df
 
 
 

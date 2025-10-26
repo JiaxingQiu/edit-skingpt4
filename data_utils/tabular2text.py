@@ -73,6 +73,7 @@ def _dedupe_periods(text: Optional[str]) -> Optional[str]:
 def row_to_natural_text(row) -> Tuple[str, str, str, str]:
     """
     Outcome: This patient’s diagnosis is {y16} ({y3}). {y16_description} {path_report_sentence}
+    Predictors: The patient has {x_skintype}. The lesion is on the {x_location}.
     Demographics: The patient is {age_sentence}{gender_sentence}{fitz_sentence}{melanoma_history_sentence}{race_eth_sentence}.
     Lesion: The lesion is on the {lesion_location}, imaged at {lesion_distance}. It measures {len_width_mm_sentence}. Clinical impressions include {impressions_sentence}.
     """
@@ -89,6 +90,12 @@ def row_to_natural_text(row) -> Tuple[str, str, str, str]:
     parts = [text_y3, text_y16, text_path]
     text_outcome = " ".join([p for p in parts if p]).strip()
 
+    # PREDICTORS
+    x_skintype = _clean_text(row.get("x_skintype"))
+    x_location = _clean_text(row.get("x_location"))
+    text_x_skintype = f"The patient has {x_skintype}." if x_skintype else ""
+    text_x_location = f"The lesion is on the {x_location}." if x_location else ""
+    
     # DEMOGRAPHICS
     age = _fmt_age(row.get("demo_age"))
     gender = _clean_text(row.get("demo_gender"))
@@ -158,7 +165,7 @@ def row_to_natural_text(row) -> Tuple[str, str, str, str]:
     lesion_text = " ".join(lesion_bits).strip()
 
     # Full paragraph
-    full = " ".join([t for t in [text_outcome, demographics_text, lesion_text] if t]).strip()
+    full = " ".join([t for t in [text_x_skintype, text_x_location, text_outcome] if t]).strip()
 
     # Safeguard: remove accidental double periods in all returned texts
     full = _dedupe_periods(full)
@@ -166,7 +173,7 @@ def row_to_natural_text(row) -> Tuple[str, str, str, str]:
     demographics_text = _dedupe_periods(demographics_text)
     lesion_text = _dedupe_periods(lesion_text)
 
-    return full, text_outcome, text_y3, text_y16, demographics_text, lesion_text
+    return full, text_outcome, text_y3, text_y16, text_x_skintype, text_x_location, demographics_text, lesion_text
 
 # Usage:
-# full, text_outcome, text_y3, text_y16, demographics_text, lesion_text = row_to_natural_text(df.iloc[0])
+# full, text_outcome, text_y3, text_y16, text_x_skintype, text_x_location, demographics_text, lesion_text = row_to_natural_text(df.iloc[0])
