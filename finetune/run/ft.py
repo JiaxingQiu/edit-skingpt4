@@ -1,6 +1,8 @@
 if args.model_type == "gpt_io":
     train_ds_ft = MIDASFTSkGPTIODataset(train_dataset, vis_processor, prompt_keys=args.prompt_keys, answer_keys=args.answer_keys)
+    train_ds_ft.inspect(show=True)
     val_ds_ft   = MIDASFTSkGPTIODataset(val_dataset,   vis_processor, prompt_keys=args.prompt_keys, answer_keys=args.answer_keys)
+    val_ds_ft.inspect(show=True)
 elif args.model_type == "gpt4":
     train_ds_ft = MIDASFTSkGPT4Dataset(train_dataset, vis_processor, args.eval_target)
     val_ds_ft   = MIDASFTSkGPT4Dataset(val_dataset,   vis_processor, args.eval_target)

@@ -68,6 +68,20 @@ class MIDASFTSkGPTIODataset(Dataset):
     def __len__(self):
         return len(self.base)
 
+    def inspect(self, idx=0, show=False):
+        item = self[idx]
+        print(f"prompt_keys={self.prompt_keys}, answer_keys={self.answer_keys}")
+        print("prompt_input:", repr(item["prompt_input"]))
+        print("answer_output:", repr(item["answer_output"]))
+        img = item["image"]  # CHW tensor
+        print("image:", tuple(img.shape), img.dtype, float(img.min()), float(img.max()))
+        if show:
+            import matplotlib.pyplot as plt
+            import torchvision.transforms.functional as F
+            plt.imshow(F.to_pil_image(img.clamp(0, 1)))
+            plt.axis("off"); plt.show()
+
+
     def __getitem__(self, idx):
         item = self.base[idx]
         img = item["image"]

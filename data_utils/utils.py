@@ -23,8 +23,8 @@ class MIDASDataset(Dataset):
         img = PILImage.open(img_path)#.convert('RGB')
         return {
             'image': img,
-            'x': row[[col for col in row.index if col.startswith('x')]+['text_x_skintype', 'text_x_location']].to_dict(),
-            'y': row[['y3', 'y16', 'y16_description'] + ["text_full", "text_outcome", "text_y3", "text_y16"] ].to_dict(),
+            # 'x': row[[col for col in row.index if col.startswith('x')]+['text_x_skintype', 'text_x_location']].to_dict(),
+            'y': row[['y3', 'y16', 'y16_description', 'x_skintype', 'x_location'] + ["text_full", "text_outcome", "text_y3", "text_y16", "text_x_skintype", "text_x_location"]].to_dict(),
             'demo': row[[col for col in row.index if col.startswith('demo')]].to_dict(),
             'lesion': row[[col for col in row.index if col.startswith('lesion')]].to_dict(),
             'notes': row[[col for col in row.index if col.startswith('notes')]].to_dict(),

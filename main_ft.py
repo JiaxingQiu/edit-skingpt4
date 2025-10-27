@@ -39,6 +39,7 @@ if __name__ == "__main__":
     # parser.add_argument("--train_mode", action="store_true", default=True, help="Train mode for generating responses")
     parser.add_argument("--suffix", default="", help="optional suffix for model name")
     args = parser.parse_args()
+    args.prompt_keys = [] if args.prompt_keys[0] == "" else args.prompt_keys # specify '' as empty list
     run(args)
 
     # engineer args
