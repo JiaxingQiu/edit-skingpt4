@@ -92,8 +92,12 @@ def row_to_natural_text(row) -> Tuple[str, str, str, str]:
 
     # PREDICTORS
     x_skintype = _clean_text(row.get("x_skintype"))
+    x_skincolor = _clean_text(row.get("x_skincolor"))
+    x_skintone = _clean_text(row.get("x_skintone"))
     x_location = _clean_text(row.get("x_location"))
     text_x_skintype = f"The patient has {x_skintype}." if x_skintype else ""
+    text_x_skincolor = f"The patient has {x_skincolor} skin color." if x_skincolor and x_skincolor != "unknown" else ""
+    text_x_skintone = f"The patient has {x_skintone} skin tone." if x_skintone and x_skintone != "unknown" else ""
     text_x_location = f"The lesion is on the {x_location}." if x_location else ""
     
     # DEMOGRAPHICS
@@ -165,15 +169,17 @@ def row_to_natural_text(row) -> Tuple[str, str, str, str]:
     lesion_text = " ".join(lesion_bits).strip()
 
     # Full paragraph
-    full = " ".join([t for t in [text_x_skintype, text_x_location, text_outcome] if t]).strip()
+    full = " ".join([t for t in [text_x_skintype, text_x_skincolor, text_x_skintone, text_x_location, text_outcome] if t]).strip()
 
     # Safeguard: remove accidental double periods in all returned texts
     full = _dedupe_periods(full)
     text_outcome = _dedupe_periods(text_outcome)
+    text_x_skincolor = _dedupe_periods(text_x_skincolor)
+    text_x_skintone = _dedupe_periods(text_x_skintone)
     demographics_text = _dedupe_periods(demographics_text)
     lesion_text = _dedupe_periods(lesion_text)
 
-    return full, text_outcome, text_y3, text_y16, text_x_skintype, text_x_location, demographics_text, lesion_text
+    return full, text_outcome, text_y3, text_y16, text_x_skintype, text_x_skincolor, text_x_skintone, text_x_location, demographics_text, lesion_text
 
 # Usage:
-# full, text_outcome, text_y3, text_y16, text_x_skintype, text_x_location, demographics_text, lesion_text = row_to_natural_text(df.iloc[0])
+# full, text_outcome, text_y3, text_y16, text_x_skintype, text_x_skincolor, text_x_skintone, text_x_location, demographics_text, lesion_text = row_to_natural_text(df.iloc[0])

@@ -1,4 +1,5 @@
 data/
+data_share/
 hf_models/
 Llama-2-13b-chat-hf/
 llama-13b/
@@ -21,3 +22,6 @@ test*.py
 test*
 finetune_*.pth
 ft_*.pth
+
+ssh
+token

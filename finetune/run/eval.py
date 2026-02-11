@@ -1,6 +1,7 @@
 import random
 # --- print one example ---
 exp_ds = train_dataset #test_dataset
+exp_dl = train_ds_ft
 N = min(20, len(exp_ds))
 idxs = random.sample(range(len(exp_ds)), N)
 for i in idxs: # sample 20 between 1 and len(exp_ds)
@@ -8,6 +9,7 @@ for i in idxs: # sample 20 between 1 and len(exp_ds)
     image = exp_ds[i]['image']
     ending_question = chat.model.conv_question
     print(f"ground truth: {exp_ds[i]['y'][args.eval_target]}")
+    print(f"answer: {exp_dl[i]['answer_output']}")
     # prepare question (local_q)
     if args.model_type == "gpt_io":
         prompt = ""

@@ -88,7 +88,7 @@ def chat_with_image(chat, image, question, num_beams=1, temperature=0.01, remove
         img_list=img_list,
         num_beams=num_beams,
         temperature=temperature,
-        max_new_tokens=50,
+        max_new_tokens=500,
         print_prompt=print_prompt,
         train_mode=train_mode,
         label_words=label_words,

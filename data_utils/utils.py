@@ -24,7 +24,7 @@ class MIDASDataset(Dataset):
         return {
             'image': img,
             # 'x': row[[col for col in row.index if col.startswith('x')]+['text_x_skintype', 'text_x_location']].to_dict(),
-            'y': row[['y3', 'y16', 'y16_description', 'x_skintype', 'x_location'] + ["text_full", "text_outcome", "text_y3", "text_y16", "text_x_skintype", "text_x_location"]].to_dict(),
+            'y': row[['y3', 'y16', 'y16_description', 'x_skintype', 'x_skincolor', 'x_skintone', 'x_location'] + ["text_full", "text_outcome", "text_y3", "text_y16", "text_x_skintype", "text_x_skincolor", "text_x_skintone", "text_x_location"]].to_dict(),
             'demo': row[[col for col in row.index if col.startswith('demo')]].to_dict(),
             'lesion': row[[col for col in row.index if col.startswith('lesion')]].to_dict(),
             'notes': row[[col for col in row.index if col.startswith('notes')]].to_dict(),
@@ -66,7 +66,7 @@ def process_tabular(data_dir):
     df = image_tabular_mapping(df, data_dir)
     text_cols = df.apply(lambda r: pd.Series(
         row_to_natural_text(r),
-        index=["text_full","text_outcome","text_y3","text_y16","text_x_skintype","text_x_location","text_demo","text_lesion"]
+        index=["text_full","text_outcome","text_y3","text_y16","text_x_skintype","text_x_skincolor","text_x_skintone","text_x_location","text_demo","text_lesion"]
     ), axis=1)
     df = pd.concat([df, text_cols], axis=1)
 
@@ -209,10 +209,12 @@ def process_x_notes(df):
     # print(f"notes_pathreport: {df['notes_pathreport'].value_counts().to_dict()}")
     return df
  
-# 5. x predictor skintype
+# 5. x predictor skintype (split into color and tone)
 def process_x_skintype(df):
     # x_skintype is from demo_fitzpatrick_skintype
     df = df.copy()
+    
+    # Original combined mapping (kept for backwards compatibility)
     mapping_x1 = {
         "i pale white skin, blue/green eyes, blond/red hair": "light white skin",
         "ii fair skin, blue eyes": "white skin",
@@ -220,16 +222,41 @@ def process_x_skintype(df):
         "iv light brown skin": "light brown skin",
         "v brown skin": "brown skin",
         "vi dark brown or black skin": "dark brown skin",
-        "unknown": "unknown",  # or use np.nan
+        "unknown": "unknown",
     }
-    df["x_skintype"] = (
-        df["demo_fitzpatrick_skintype"]
-        .str.lower()
-        .map(mapping_x1)
-        .fillna("unknown")
-    )
+    
+    # Skin color mapping: white vs brown
+    color_mapping = {
+        "i pale white skin, blue/green eyes, blond/red hair": "white",
+        "ii fair skin, blue eyes": "white",
+        "iii darker white skin": "white",
+        "iv light brown skin": "brown",
+        "v brown skin": "brown",
+        "vi dark brown or black skin": "brown",
+        "unknown": "unknown",
+    }
+    
+    # Skin tone mapping: 3-level scale (light, medium, dark)
+    tone_mapping = {
+        "i pale white skin, blue/green eyes, blond/red hair": "light",
+        "ii fair skin, blue eyes": "medium",
+        "iii darker white skin": "dark",
+        "iv light brown skin": "light",
+        "v brown skin": "medium",
+        "vi dark brown or black skin": "dark",
+        "unknown": "unknown",
+    }
+    
+    fitz_lower = df["demo_fitzpatrick_skintype"].str.lower()
+    
+    df["x_skintype"] = fitz_lower.map(mapping_x1).fillna("unknown")
+    df["x_skincolor"] = fitz_lower.map(color_mapping).fillna("unknown")
+    df["x_skintone"] = fitz_lower.map(tone_mapping).fillna("unknown")
+    
     print(f"x_skintype: {df['x_skintype'].nunique()}")
     print(f"x_skintype: {df['x_skintype'].value_counts().to_dict()}")
+    print(f"x_skincolor: {df['x_skincolor'].value_counts().to_dict()}")
+    print(f"x_skintone: {df['x_skintone'].value_counts().to_dict()}")
     return df
 
 # 6. x predictor lesion location (8 + other high-level regions)
